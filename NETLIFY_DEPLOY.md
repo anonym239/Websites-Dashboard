@@ -16,6 +16,8 @@ Das Repository-Root bleibt das Netlify-Base-Verzeichnis. `netlify.toml` setzt au
 
 Die Werte werden im Netlify-Dashboard unter den Environment Variables hinterlegt. Keine dieser Variablen in die ZIP-Datei oder in den Frontend-Code schreiben.
 
+Die Datei `.env.netlify.example` enthält die komplette Variablenliste als Vorlage. Du kannst sie lokal in `.env` umbenennen, die Werte eintragen und in Netlify über **Add a variable → Import from a .env file** importieren. Die ausgefüllte `.env`-Datei darf nicht nach GitHub hochgeladen werden.
+
 ### Frontend
 
 - `VITE_CLERK_PUBLISHABLE_KEY`
