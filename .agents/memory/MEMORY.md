@@ -1,0 +1,2 @@
+- [Generated API client typing](api-client-dom-iterable.md) — keep `dom.iterable` enabled so generated `Headers.entries()` calls typecheck.
+- [Netlify Functions and serverless-http](netlify-functions-cjs.md) — use a CommonJS function entry because ESM bundling can break serverless-http's dynamic Node requires.

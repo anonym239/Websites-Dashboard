@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Website Admin Dashboard"
+description = "A secure dashboard for managing published websites, GitHub links, user roles, uploads, and moderation from one place."
+version = "1.0.0"
+id = "artifacts/website-admin-dashboard"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24852
+
+[services.development]
+run = "pnpm --filter @workspace/website-admin-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/website-admin-dashboard", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/website-admin-dashboard/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24852"
+BASE_PATH = "/"

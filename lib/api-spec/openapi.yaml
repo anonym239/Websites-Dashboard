@@ -1,0 +1,452 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: websites
+    description: Public website catalog and protected management
+  - name: dashboard
+    description: Dashboard summaries and activity
+  - name: users
+    description: User and role management
+  - name: session
+    description: Current authenticated user
+  - name: netlify
+    description: Import projects from Netlify
+  - name: feedback
+    description: Public teacher feedback
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /websites:
+    get:
+      operationId: listWebsites
+      tags: [websites]
+      summary: List published websites
+      responses:
+        "200":
+          description: Website entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Website"
+    post:
+      operationId: createWebsite
+      tags: [websites]
+      summary: Add a website
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebsiteInput"
+      responses:
+        "201":
+          description: Created website
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Website"
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+  /netlify/import:
+    post:
+      operationId: importNetlifyWebsites
+      tags: [netlify]
+      summary: Import and synchronize Netlify projects
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetlifyImportResult"
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+        "503":
+          description: Netlify token is not configured
+  /feedback:
+    get:
+      operationId: listFeedback
+      tags: [feedback]
+      summary: List public teacher feedback
+      responses:
+        "200":
+          description: Recent teacher feedback
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Feedback"
+    post:
+      operationId: createFeedback
+      tags: [feedback]
+      summary: Submit teacher feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackInput"
+      responses:
+        "201":
+          description: Saved feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+        "400":
+          description: Invalid feedback
+  /feedback/manage:
+    get:
+      operationId: listManagedFeedback
+      tags: [feedback]
+      summary: List feedback for account management
+      responses:
+        "200":
+          description: All teacher feedback with visibility state
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ManagedFeedback"
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+  /feedback/{feedbackId}:
+    patch:
+      operationId: updateFeedback
+      tags: [feedback]
+      summary: Change feedback visibility
+      parameters:
+        - $ref: "#/components/parameters/FeedbackId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackUpdate"
+      responses:
+        "200":
+          description: Updated feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManagedFeedback"
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+        "404":
+          description: Feedback not found
+    delete:
+      operationId: deleteFeedback
+      tags: [feedback]
+      summary: Delete feedback
+      parameters:
+        - $ref: "#/components/parameters/FeedbackId"
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: Feedback not found
+  /websites/{websiteId}:
+    patch:
+      operationId: updateWebsite
+      tags: [websites]
+      summary: Update a website
+      parameters:
+        - $ref: "#/components/parameters/WebsiteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebsiteUpdate"
+      responses:
+        "200":
+          description: Updated website
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Website"
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+        "404":
+          description: Website not found
+    delete:
+      operationId: deleteWebsite
+      tags: [websites]
+      summary: Remove a website
+      parameters:
+        - $ref: "#/components/parameters/WebsiteId"
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+        "404":
+          description: Website not found
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary
+      responses:
+        "200":
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Authentication required
+  /dashboard/activity:
+    get:
+      operationId: listActivity
+      tags: [dashboard]
+      summary: List recent activity
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+        "401":
+          description: Authentication required
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List registered users
+      responses:
+        "200":
+          description: Registered users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppUser"
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+  /session/me:
+    get:
+      operationId: getCurrentUser
+      tags: [session]
+      summary: Get the current application user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppUser"
+        "401":
+          description: Authentication required
+  /users/{userId}/role:
+    patch:
+      operationId: updateUserRole
+      tags: [users]
+      summary: Change a user's role
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppUser"
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: User not found
+components:
+  parameters:
+    WebsiteId:
+      name: websiteId
+      in: path
+      required: true
+      schema:
+        type: integer
+    FeedbackId:
+      name: feedbackId
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Website:
+      type: object
+      required: [id, name, url, status, visits, updatedAt, ownerName]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        url: { type: string, format: uri }
+        githubUrl: { type: ["string", "null"], format: uri }
+        imageUrl: { type: ["string", "null"], format: uri }
+        description: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [live, draft, paused]
+        visits: { type: integer }
+        updatedAt: { type: string, format: date-time }
+        ownerName: { type: string }
+    WebsiteInput:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string, minLength: 1 }
+        url: { type: string, format: uri }
+        githubUrl: { type: ["string", "null"], format: uri }
+        description: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [live, draft, paused]
+    WebsiteUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        url: { type: string, format: uri }
+        githubUrl: { type: ["string", "null"], format: uri }
+        description: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [live, draft, paused]
+    NetlifyImportResult:
+      type: object
+      required: [imported, updated, skipped, total]
+      properties:
+        imported: { type: integer }
+        updated: { type: integer }
+        skipped: { type: integer }
+        total: { type: integer }
+    Feedback:
+      type: object
+      required: [id, teacherName, feedback, rating, createdAt]
+      properties:
+        id: { type: integer }
+        teacherName: { type: string }
+        feedback: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        createdAt: { type: string, format: date-time }
+    FeedbackInput:
+      type: object
+      required: [teacherName, feedback, rating]
+      properties:
+        teacherName: { type: string, minLength: 2, maxLength: 80 }
+        feedback: { type: string, minLength: 3, maxLength: 500 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+    ManagedFeedback:
+      allOf:
+        - $ref: "#/components/schemas/Feedback"
+        - type: object
+          required: [isVisible]
+          properties:
+            isVisible: { type: boolean }
+    FeedbackUpdate:
+      type: object
+      required: [isVisible]
+      properties:
+        isVisible: { type: boolean }
+    DashboardSummary:
+      type: object
+      required: [totalWebsites, liveWebsites, totalVisits, registeredUsers, uptime]
+      properties:
+        totalWebsites: { type: integer }
+        liveWebsites: { type: integer }
+        totalVisits: { type: integer }
+        registeredUsers: { type: integer }
+        uptime: { type: string }
+    Activity:
+      type: object
+      required: [id, type, message, actorName, createdAt]
+      properties:
+        id: { type: integer }
+        type:
+          type: string
+          enum: [website_added, website_updated, website_deleted, netlify_imported, user_joined, role_changed]
+        message: { type: string }
+        actorName: { type: string }
+        createdAt: { type: string, format: date-time }
+    AppUser:
+      type: object
+      required: [id, name, email, role, joinedAt, lastActiveAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        avatarUrl: { type: ["string", "null"], format: uri }
+        role:
+          type: string
+          enum: [admin, moderator, member]
+        joinedAt: { type: string, format: date-time }
+        lastActiveAt: { type: string, format: date-time }
+    RoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [admin, moderator, member]
+
