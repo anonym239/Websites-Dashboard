@@ -13,10 +13,36 @@ export type CurrentUser = {
   role: AppRole;
   joinedAt: Date;
   lastActiveAt: Date;
+  profileVisibility: "private" | "public";
 };
+
+const FALLBACK_ADMIN_EMAILS = new Set(["alexanderfuchs304@gmail.com"]);
 
 function normalizeRole(role: string): AppRole {
   return role === "admin" || role === "moderator" ? role : "member";
+}
+
+function normalizeProfileVisibility(value: string): "private" | "public" {
+  return value === "public" ? "public" : "private";
+}
+
+function normalizeEmail(email: string): string {
+  return email.normalize("NFKC").trim().toLowerCase();
+}
+
+function getAdminEmailAllowlist(): Set<string> {
+  const configuredEmails = [process.env.ADMIN_EMAILS, process.env.ADMIN_EMAIL]
+    .filter(Boolean)
+    .flatMap((value) => value!.split(","));
+
+  return new Set([
+    ...FALLBACK_ADMIN_EMAILS,
+    ...configuredEmails.map(normalizeEmail).filter(Boolean),
+  ]);
+}
+
+export function isBootstrapAdminEmail(email: string): boolean {
+  return getAdminEmailAllowlist().has(normalizeEmail(email));
 }
 
 export async function getCurrentUser(req: Request): Promise<CurrentUser | null> {
@@ -34,8 +60,9 @@ export async function getCurrentUser(req: Request): Promise<CurrentUser | null> 
   const name =
     [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
     primaryEmail.split("@")[0];
-  const isBootstrapAdmin =
-    primaryEmail.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase();
+  const isBootstrapAdmin = clerkUser.emailAddresses.some((address) =>
+    isBootstrapAdminEmail(address.emailAddress),
+  );
 
   const [user] = await db
     .insert(appUsersTable)
@@ -58,14 +85,17 @@ export async function getCurrentUser(req: Request): Promise<CurrentUser | null> 
     })
     .returning();
 
+  const effectiveRole = isBootstrapAdmin ? "admin" : normalizeRole(user.role);
+
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     avatarUrl: user.avatarUrl,
-    role: normalizeRole(user.role),
+    role: effectiveRole,
     joinedAt: user.joinedAt,
     lastActiveAt: user.lastActiveAt,
+    profileVisibility: normalizeProfileVisibility(user.profileVisibility),
   };
 }
 
@@ -98,13 +128,15 @@ export async function findUserById(id: string): Promise<CurrentUser | null> {
     .from(appUsersTable)
     .where(and(eq(appUsersTable.id, id)));
   if (!user) return null;
+  const effectiveRole = isBootstrapAdminEmail(user.email) ? "admin" : normalizeRole(user.role);
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     avatarUrl: user.avatarUrl,
-    role: normalizeRole(user.role),
+    role: effectiveRole,
     joinedAt: user.joinedAt,
     lastActiveAt: user.lastActiveAt,
+    profileVisibility: normalizeProfileVisibility(user.profileVisibility),
   };
 }

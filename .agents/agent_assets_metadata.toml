@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "1-iHih6elDqVFqHK5CJoe"
+uri = "file://.env.netlify.example"
+type = "unspecified"
+title = "Netlify-Umgebungsvariablen – sichere Vorlage"
+description = "Vorlage ohne geheime Werte. Lokal kopieren, ausfüllen und anschließend in Netlify über Import from a .env file importieren."
+logical_id = "ac38b4b6-e02b-47f7-832c-66592b1359ab"
+content_hash = "sha256:a8a21373750cd807dec3a2d7ea244bed6ef14f0d47129b1a28d030d3a5acb097"
+size = 348
+mtime_ms = 1789854334868
+storage_uri = "gcs://replit-rams-assets-archer/rams/assets/repl:410b0201-5e70-4eac-b779-d6b0d7c8c46f/ac38b4b6-e02b-47f7-832c-66592b1359ab/6e6cf53c-5d29-4503-963c-b7fb6199b3cd"
+storage_version_token = "1789854617772810"
+content_type = "application/octet-stream"

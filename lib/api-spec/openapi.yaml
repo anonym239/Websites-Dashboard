@@ -22,6 +22,10 @@ tags:
     description: Import projects from Netlify
   - name: feedback
     description: Public teacher feedback
+  - name: events
+    description: Public announcements managed by administrators
+  - name: members
+    description: Authenticated member features
 paths:
   /healthz:
     get:
@@ -89,6 +93,105 @@ paths:
           description: Insufficient role
         "503":
           description: Netlify token is not configured
+  /events/active:
+    get:
+      operationId: listActiveEvents
+      tags: [events]
+      summary: List the active public events
+      responses:
+        "200":
+          description: Active public events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+  /events/manage:
+    get:
+      operationId: listManagedEvents
+      tags: [events]
+      summary: List events for account management
+      responses:
+        "200":
+          description: All events with activation state
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+  /events:
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create a public event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+      responses:
+        "201":
+          description: Created event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid event
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+  /events/{eventId}:
+    patch:
+      operationId: updateEvent
+      tags: [events]
+      summary: Update a public event
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventUpdate"
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid event
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: Event not found
+    delete:
+      operationId: deleteEvent
+      tags: [events]
+      summary: Delete a public event
+      parameters:
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: Event not found
   /feedback:
     get:
       operationId: listFeedback
@@ -122,6 +225,28 @@ paths:
                 $ref: "#/components/schemas/Feedback"
         "400":
           description: Invalid feedback
+        "409":
+          description: A very similar feedback submission was already received recently
+        "429":
+          description: Too many feedback submissions from the same source
+          headers:
+            Retry-After:
+              description: Seconds until another submission may be attempted
+              schema:
+                type: integer
+  /feedback/stats:
+    get:
+      operationId: getFeedbackStats
+      tags: [feedback]
+      summary: Get public teacher feedback statistics
+      description: Returns aggregate statistics for visible teacher feedback only
+      responses:
+        "200":
+          description: Public teacher feedback statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackStats"
   /feedback/manage:
     get:
       operationId: listManagedFeedback
@@ -181,6 +306,104 @@ paths:
           description: Admin role required
         "404":
           description: Feedback not found
+  /feedback/{feedbackId}/history:
+    get:
+      operationId: listFeedbackHistory
+      tags: [feedback]
+      summary: List feedback moderation history
+      parameters:
+        - $ref: "#/components/parameters/FeedbackId"
+      responses:
+        "200":
+          description: Moderation history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedbackModerationHistory"
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+        "404":
+          description: Feedback not found
+  /feedback/{feedbackId}/report:
+    post:
+      operationId: createFeedbackReport
+      tags: [feedback]
+      summary: Report public feedback
+      parameters:
+        - $ref: "#/components/parameters/FeedbackId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackReportInput"
+      responses:
+        "201":
+          description: Feedback report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackReport"
+        "400":
+          description: Invalid report
+        "404":
+          description: Feedback not found
+        "409":
+          description: A matching open report already exists
+  /feedback/reports:
+    get:
+      operationId: listFeedbackReports
+      tags: [feedback]
+      summary: List feedback reports for moderators
+      responses:
+        "200":
+          description: Feedback reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedbackReport"
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+  /feedback/reports/{reportId}:
+    patch:
+      operationId: updateFeedbackReport
+      tags: [feedback]
+      summary: Resolve a feedback report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackReportUpdate"
+      responses:
+        "200":
+          description: Updated feedback report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackReport"
+        "400":
+          description: Invalid report status
+        "401":
+          description: Authentication required
+        "403":
+          description: Insufficient role
+        "404":
+          description: Report not found
   /websites/{websiteId}:
     patch:
       operationId: updateWebsite
@@ -252,6 +475,306 @@ paths:
                   $ref: "#/components/schemas/Activity"
         "401":
           description: Authentication required
+  /admin/activity:
+    get:
+      operationId: listAdminActivity
+      tags: [dashboard]
+      summary: List the administrator audit log
+      responses:
+        "200":
+          description: Administrator audit log
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+  /member/favorites:
+    get:
+      operationId: listMemberFavorites
+      tags: [members]
+      summary: List the current member's favorite websites
+      responses:
+        "200":
+          description: Favorite websites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Website"
+        "401":
+          description: Authentication required
+  /member/favorites/{websiteId}:
+    post:
+      operationId: createMemberFavorite
+      tags: [members]
+      summary: Save a website to the member's favorites
+      parameters:
+        - $ref: "#/components/parameters/WebsiteId"
+      responses:
+        "201":
+          description: Favorite website
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Website"
+        "401":
+          description: Authentication required
+        "404":
+          description: Website not found
+    delete:
+      operationId: deleteMemberFavorite
+      tags: [members]
+      summary: Remove a website from the member's favorites
+      parameters:
+        - $ref: "#/components/parameters/WebsiteId"
+      responses:
+        "204":
+          description: Removed
+        "401":
+          description: Authentication required
+  /member/requests:
+    get:
+      operationId: listMemberRequests
+      tags: [members]
+      summary: List the current member's project requests
+      responses:
+        "200":
+          description: Member project requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberRequest"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createMemberRequest
+      tags: [members]
+      summary: Send a project request to the administrator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberRequestInput"
+      responses:
+        "201":
+          description: Created request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberRequest"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+  /member/requests/{requestId}/history:
+    get:
+      operationId: listMemberRequestHistory
+      tags: [members]
+      summary: List the status history of a member request
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Member request history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberRequestHistory"
+        "401":
+          description: Authentication required
+        "403":
+          description: Not allowed to view this request
+        "404":
+          description: Request not found
+  /member/requests/{requestId}:
+    patch:
+      operationId: updateMemberRequest
+      tags: [members]
+      summary: Add a message to a member request
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberRequestUpdate"
+      responses:
+        "200":
+          description: Updated member request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberRequest"
+        "400":
+          description: Invalid request message
+        "401":
+          description: Authentication required
+        "403":
+          description: Not allowed to edit this request
+        "404":
+          description: Request not found
+    delete:
+      operationId: withdrawMemberRequest
+      tags: [members]
+      summary: Withdraw the current member's request
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Withdrawn member request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberRequest"
+        "401":
+          description: Authentication required
+        "403":
+          description: Not allowed to withdraw this request
+        "404":
+          description: Request not found
+  /member/notifications:
+    get:
+      operationId: listMemberNotifications
+      tags: [members]
+      summary: List the current member's notifications
+      responses:
+        "200":
+          description: Member notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberNotification"
+        "401":
+          description: Authentication required
+  /member/notifications/{notificationId}/read:
+    patch:
+      operationId: markMemberNotificationRead
+      tags: [members]
+      summary: Mark a member notification as read
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberNotification"
+        "401":
+          description: Authentication required
+        "404":
+          description: Notification not found
+  /member/profile:
+    get:
+      operationId: getMemberProfile
+      tags: [members]
+      summary: Get the current member profile settings
+      responses:
+        "200":
+          description: Member profile settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberProfile"
+        "401":
+          description: Authentication required
+    patch:
+      operationId: updateMemberProfile
+      tags: [members]
+      summary: Update the current member profile settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberProfileUpdate"
+      responses:
+        "200":
+          description: Updated member profile settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberProfile"
+        "400":
+          description: Invalid profile settings
+        "401":
+          description: Authentication required
+  /requests/manage:
+    get:
+      operationId: listManagedMemberRequests
+      tags: [members]
+      summary: List member requests for administrators
+      responses:
+        "200":
+          description: All member requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberRequest"
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+  /requests/{requestId}/status:
+    patch:
+      operationId: updateMemberRequestStatus
+      tags: [members]
+      summary: Update a member request status
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberRequestStatusUpdate"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberRequest"
+        "400":
+          description: Invalid status
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: Request not found
+  /requests/{requestId}:
+    delete:
+      operationId: deleteManagedMemberRequest
+      tags: [members]
+      summary: Delete a member request as an administrator
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "204":
+          description: Request deleted
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: Request not found
   /users:
     get:
       operationId: listUsers
@@ -328,6 +851,24 @@ components:
       required: true
       schema:
         type: integer
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: integer
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        type: integer
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: integer
   schemas:
     HealthStatus:
       type: object
@@ -397,6 +938,26 @@ components:
         teacherName: { type: string, minLength: 2, maxLength: 80 }
         feedback: { type: string, minLength: 3, maxLength: 500 }
         rating: { type: integer, minimum: 1, maximum: 5 }
+    FeedbackStats:
+      type: object
+      required: [averageRating, totalCount, distribution]
+      properties:
+        averageRating:
+          type: number
+          minimum: 0
+          maximum: 5
+        totalCount:
+          type: integer
+          minimum: 0
+        distribution:
+          type: object
+          required: [oneStar, twoStars, threeStars, fourStars, fiveStars]
+          properties:
+            oneStar: { type: integer, minimum: 0 }
+            twoStars: { type: integer, minimum: 0 }
+            threeStars: { type: integer, minimum: 0 }
+            fourStars: { type: integer, minimum: 0 }
+            fiveStars: { type: integer, minimum: 0 }
     ManagedFeedback:
       allOf:
         - $ref: "#/components/schemas/Feedback"
@@ -409,14 +970,142 @@ components:
       required: [isVisible]
       properties:
         isVisible: { type: boolean }
+        reason: { type: [string, "null"], maxLength: 500 }
+    FeedbackModerationHistory:
+      type: object
+      required: [id, feedbackId, action, actorId, actorName, createdAt]
+      properties:
+        id: { type: integer }
+        feedbackId: { type: integer }
+        action:
+          type: string
+          enum: [published, hidden, deleted]
+        reason: { type: [string, "null"] }
+        actorId: { type: string }
+        actorName: { type: string }
+        createdAt: { type: string, format: date-time }
+    FeedbackReportInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [spam, offensive, advertising, duplicate, other]
+        details: { type: [string, "null"], maxLength: 500 }
+    FeedbackReport:
+      type: object
+      required: [id, feedbackId, reason, status, createdAt]
+      properties:
+        id: { type: integer }
+        feedbackId: { type: integer }
+        reason:
+          type: string
+          enum: [spam, offensive, advertising, duplicate, other]
+        details: { type: [string, "null"] }
+        status:
+          type: string
+          enum: [open, reviewed, dismissed]
+        reviewedBy: { type: [string, "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    FeedbackReportUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [reviewed, dismissed]
+    Event:
+      type: object
+      required: [id, title, message, isActive, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        message: { type: string }
+        imageUrl: { type: ["string", "null"], format: uri }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    EventInput:
+      type: object
+      required: [title, message]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        message: { type: string, minLength: 1, maxLength: 1000 }
+        imageUrl: { type: ["string", "null"], format: uri }
+        isActive: { type: boolean }
+    EventUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        message: { type: string, minLength: 1, maxLength: 1000 }
+        imageUrl: { type: ["string", "null"], format: uri }
+        isActive: { type: boolean }
+    MemberRequest:
+      type: object
+      required: [id, userId, userName, userEmail, message, status, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        userId: { type: string }
+        userName: { type: string }
+        userEmail: { type: string, format: email }
+        message: { type: string }
+        status:
+          type: string
+          enum: [open, in_progress, closed, withdrawn]
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    MemberRequestInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 3, maxLength: 1000 }
+    MemberRequestStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [open, in_progress, closed]
+    MemberRequestHistory:
+      type: object
+      required: [id, requestId, status, message, actorId, actorName, createdAt]
+      properties:
+        id: { type: integer }
+        requestId: { type: integer }
+        status:
+          type: string
+          enum: [open, in_progress, closed, withdrawn]
+        message: { type: string }
+        actorId: { type: string }
+        actorName: { type: string }
+        createdAt: { type: string, format: date-time }
+    MemberRequestUpdate:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 3, maxLength: 1000 }
+    MemberNotification:
+      type: object
+      required: [id, title, message, isRead, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        message: { type: string }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
     DashboardSummary:
       type: object
-      required: [totalWebsites, liveWebsites, totalVisits, registeredUsers, uptime]
+      required: [totalWebsites, liveWebsites, totalVisits, registeredUsers, openRequests, pendingFeedback, activeEvents, newMembers, uptime]
       properties:
         totalWebsites: { type: integer }
         liveWebsites: { type: integer }
         totalVisits: { type: integer }
         registeredUsers: { type: integer }
+        openRequests: { type: integer }
+        pendingFeedback: { type: integer }
+        activeEvents: { type: integer }
+        newMembers: { type: integer }
         uptime: { type: string }
     Activity:
       type: object
@@ -425,7 +1114,7 @@ components:
         id: { type: integer }
         type:
           type: string
-          enum: [website_added, website_updated, website_deleted, netlify_imported, user_joined, role_changed]
+          enum: [website_added, website_updated, website_deleted, netlify_imported, user_joined, role_changed, event_created, member_request_created, member_request_updated, feedback_published, feedback_hidden, feedback_deleted, feedback_reported, feedback_report_resolved, member_request_withdrawn, profile_updated]
         message: { type: string }
         actorName: { type: string }
         createdAt: { type: string, format: date-time }
@@ -442,6 +1131,9 @@ components:
           enum: [admin, moderator, member]
         joinedAt: { type: string, format: date-time }
         lastActiveAt: { type: string, format: date-time }
+        profileVisibility:
+          type: string
+          enum: [private, public]
     RoleUpdate:
       type: object
       required: [role]
@@ -449,4 +1141,25 @@ components:
         role:
           type: string
           enum: [admin, moderator, member]
+    MemberProfile:
+      type: object
+      required: [id, name, email, avatarUrl, role, profileVisibility]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        avatarUrl: { type: ["string", "null"], format: uri }
+        role:
+          type: string
+          enum: [admin, moderator, member]
+        profileVisibility:
+          type: string
+          enum: [private, public]
+    MemberProfileUpdate:
+      type: object
+      required: [profileVisibility]
+      properties:
+        profileVisibility:
+          type: string
+          enum: [private, public]
 

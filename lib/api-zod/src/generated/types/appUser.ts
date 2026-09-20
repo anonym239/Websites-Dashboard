@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AppUserProfileVisibility } from './appUserProfileVisibility';
 import type { AppUserRole } from './appUserRole';
 
 export interface AppUser {
@@ -16,4 +17,5 @@ export interface AppUser {
   role: AppUserRole;
   joinedAt: Date;
   lastActiveAt: Date;
+  profileVisibility?: AppUserProfileVisibility;
 }

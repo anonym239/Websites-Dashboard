@@ -111,12 +111,248 @@ export interface FeedbackInput {
   rating: number;
 }
 
+export type FeedbackStatsDistribution = {
+  /** @minimum 0 */
+  oneStar: number;
+  /** @minimum 0 */
+  twoStars: number;
+  /** @minimum 0 */
+  threeStars: number;
+  /** @minimum 0 */
+  fourStars: number;
+  /** @minimum 0 */
+  fiveStars: number;
+};
+
+export interface FeedbackStats {
+  /**
+     * @minimum 0
+     * @maximum 5
+     */
+  averageRating: number;
+  /** @minimum 0 */
+  totalCount: number;
+  distribution: FeedbackStatsDistribution;
+}
+
 export type ManagedFeedback = Feedback & {
   isVisible: boolean;
 };
 
 export interface FeedbackUpdate {
   isVisible: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  reason?: string | null;
+}
+
+export type FeedbackModerationHistoryAction = typeof FeedbackModerationHistoryAction[keyof typeof FeedbackModerationHistoryAction];
+
+
+export const FeedbackModerationHistoryAction = {
+  published: 'published',
+  hidden: 'hidden',
+  deleted: 'deleted',
+} as const;
+
+export interface FeedbackModerationHistory {
+  id: number;
+  feedbackId: number;
+  action: FeedbackModerationHistoryAction;
+  /** @nullable */
+  reason?: string | null;
+  actorId: string;
+  actorName: string;
+  createdAt: string;
+}
+
+export type FeedbackReportInputReason = typeof FeedbackReportInputReason[keyof typeof FeedbackReportInputReason];
+
+
+export const FeedbackReportInputReason = {
+  spam: 'spam',
+  offensive: 'offensive',
+  advertising: 'advertising',
+  duplicate: 'duplicate',
+  other: 'other',
+} as const;
+
+export interface FeedbackReportInput {
+  reason: FeedbackReportInputReason;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  details?: string | null;
+}
+
+export type FeedbackReportReason = typeof FeedbackReportReason[keyof typeof FeedbackReportReason];
+
+
+export const FeedbackReportReason = {
+  spam: 'spam',
+  offensive: 'offensive',
+  advertising: 'advertising',
+  duplicate: 'duplicate',
+  other: 'other',
+} as const;
+
+export type FeedbackReportStatus = typeof FeedbackReportStatus[keyof typeof FeedbackReportStatus];
+
+
+export const FeedbackReportStatus = {
+  open: 'open',
+  reviewed: 'reviewed',
+  dismissed: 'dismissed',
+} as const;
+
+export interface FeedbackReport {
+  id: number;
+  feedbackId: number;
+  reason: FeedbackReportReason;
+  /** @nullable */
+  details?: string | null;
+  status: FeedbackReportStatus;
+  /** @nullable */
+  reviewedBy?: string | null;
+  /** @nullable */
+  reviewedAt?: string | null;
+  createdAt: string;
+}
+
+export type FeedbackReportUpdateStatus = typeof FeedbackReportUpdateStatus[keyof typeof FeedbackReportUpdateStatus];
+
+
+export const FeedbackReportUpdateStatus = {
+  reviewed: 'reviewed',
+  dismissed: 'dismissed',
+} as const;
+
+export interface FeedbackReportUpdate {
+  status: FeedbackReportUpdateStatus;
+}
+
+export interface Event {
+  id: number;
+  title: string;
+  message: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  message: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  isActive?: boolean;
+}
+
+export interface EventUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title?: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  message?: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  isActive?: boolean;
+}
+
+export type MemberRequestStatus = typeof MemberRequestStatus[keyof typeof MemberRequestStatus];
+
+
+export const MemberRequestStatus = {
+  open: 'open',
+  in_progress: 'in_progress',
+  closed: 'closed',
+  withdrawn: 'withdrawn',
+} as const;
+
+export interface MemberRequest {
+  id: number;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  message: string;
+  status: MemberRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemberRequestInput {
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  message: string;
+}
+
+export type MemberRequestStatusUpdateStatus = typeof MemberRequestStatusUpdateStatus[keyof typeof MemberRequestStatusUpdateStatus];
+
+
+export const MemberRequestStatusUpdateStatus = {
+  open: 'open',
+  in_progress: 'in_progress',
+  closed: 'closed',
+} as const;
+
+export interface MemberRequestStatusUpdate {
+  status: MemberRequestStatusUpdateStatus;
+}
+
+export type MemberRequestHistoryStatus = typeof MemberRequestHistoryStatus[keyof typeof MemberRequestHistoryStatus];
+
+
+export const MemberRequestHistoryStatus = {
+  open: 'open',
+  in_progress: 'in_progress',
+  closed: 'closed',
+  withdrawn: 'withdrawn',
+} as const;
+
+export interface MemberRequestHistory {
+  id: number;
+  requestId: number;
+  status: MemberRequestHistoryStatus;
+  message: string;
+  actorId: string;
+  actorName: string;
+  createdAt: string;
+}
+
+export interface MemberRequestUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  message: string;
+}
+
+export interface MemberNotification {
+  id: number;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface DashboardSummary {
@@ -124,6 +360,10 @@ export interface DashboardSummary {
   liveWebsites: number;
   totalVisits: number;
   registeredUsers: number;
+  openRequests: number;
+  pendingFeedback: number;
+  activeEvents: number;
+  newMembers: number;
   uptime: string;
 }
 
@@ -137,6 +377,16 @@ export const ActivityType = {
   netlify_imported: 'netlify_imported',
   user_joined: 'user_joined',
   role_changed: 'role_changed',
+  event_created: 'event_created',
+  member_request_created: 'member_request_created',
+  member_request_updated: 'member_request_updated',
+  feedback_published: 'feedback_published',
+  feedback_hidden: 'feedback_hidden',
+  feedback_deleted: 'feedback_deleted',
+  feedback_reported: 'feedback_reported',
+  feedback_report_resolved: 'feedback_report_resolved',
+  member_request_withdrawn: 'member_request_withdrawn',
+  profile_updated: 'profile_updated',
 } as const;
 
 export interface Activity {
@@ -156,6 +406,14 @@ export const AppUserRole = {
   member: 'member',
 } as const;
 
+export type AppUserProfileVisibility = typeof AppUserProfileVisibility[keyof typeof AppUserProfileVisibility];
+
+
+export const AppUserProfileVisibility = {
+  private: 'private',
+  public: 'public',
+} as const;
+
 export interface AppUser {
   id: string;
   name: string;
@@ -165,6 +423,7 @@ export interface AppUser {
   role: AppUserRole;
   joinedAt: string;
   lastActiveAt: string;
+  profileVisibility?: AppUserProfileVisibility;
 }
 
 export type RoleUpdateRole = typeof RoleUpdateRole[keyof typeof RoleUpdateRole];
@@ -178,5 +437,44 @@ export const RoleUpdateRole = {
 
 export interface RoleUpdate {
   role: RoleUpdateRole;
+}
+
+export type MemberProfileRole = typeof MemberProfileRole[keyof typeof MemberProfileRole];
+
+
+export const MemberProfileRole = {
+  admin: 'admin',
+  moderator: 'moderator',
+  member: 'member',
+} as const;
+
+export type MemberProfileProfileVisibility = typeof MemberProfileProfileVisibility[keyof typeof MemberProfileProfileVisibility];
+
+
+export const MemberProfileProfileVisibility = {
+  private: 'private',
+  public: 'public',
+} as const;
+
+export interface MemberProfile {
+  id: string;
+  name: string;
+  email: string;
+  /** @nullable */
+  avatarUrl: string | null;
+  role: MemberProfileRole;
+  profileVisibility: MemberProfileProfileVisibility;
+}
+
+export type MemberProfileUpdateProfileVisibility = typeof MemberProfileUpdateProfileVisibility[keyof typeof MemberProfileUpdateProfileVisibility];
+
+
+export const MemberProfileUpdateProfileVisibility = {
+  private: 'private',
+  public: 'public',
+} as const;
+
+export interface MemberProfileUpdate {
+  profileVisibility: MemberProfileUpdateProfileVisibility;
 }
 

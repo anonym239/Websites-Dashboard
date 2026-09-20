@@ -8,6 +8,7 @@ export const appUsersTable = pgTable("app_users", {
   email: text("email").notNull().unique(),
   avatarUrl: text("avatar_url"),
   role: text("role").notNull().default("member"),
+  profileVisibility: text("profile_visibility").notNull().default("private"),
   joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
   lastActiveAt: timestamp("last_active_at", { withTimezone: true }).notNull().defaultNow(),
 });

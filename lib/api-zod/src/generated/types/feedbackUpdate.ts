@@ -8,4 +8,9 @@
 
 export interface FeedbackUpdate {
   isVisible: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  reason?: string | null;
 }

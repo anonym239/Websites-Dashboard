@@ -75,6 +75,104 @@ export const ImportNetlifyWebsitesResponse = zod.object({
 
 
 /**
+ * @summary List the active public events
+ */
+export const ListActiveEventsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "imageUrl": zod.string().url().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListActiveEventsResponse = zod.array(ListActiveEventsResponseItem)
+
+
+/**
+ * @summary List events for account management
+ */
+export const ListManagedEventsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "imageUrl": zod.string().url().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListManagedEventsResponse = zod.array(ListManagedEventsResponseItem)
+
+
+/**
+ * @summary Create a public event
+ */
+export const createEventBodyTitleMax = 120;
+
+export const createEventBodyMessageMax = 1000;
+
+
+
+export const CreateEventBody = zod.object({
+  "title": zod.string().min(1).max(createEventBodyTitleMax),
+  "message": zod.string().min(1).max(createEventBodyMessageMax),
+  "imageUrl": zod.string().url().nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateEventResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "imageUrl": zod.string().url().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a public event
+ */
+export const UpdateEventParams = zod.object({
+  "eventId": zod.coerce.number().int()
+})
+
+export const updateEventBodyTitleMax = 120;
+
+export const updateEventBodyMessageMax = 1000;
+
+
+
+export const UpdateEventBody = zod.object({
+  "title": zod.string().min(1).max(updateEventBodyTitleMax).optional(),
+  "message": zod.string().min(1).max(updateEventBodyMessageMax).optional(),
+  "imageUrl": zod.string().url().nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateEventResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "imageUrl": zod.string().url().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a public event
+ */
+export const DeleteEventParams = zod.object({
+  "eventId": zod.coerce.number().int()
+})
+
+export const DeleteEventResponse = zod.void()
+
+
+/**
  * @summary List public teacher feedback
  */
 export const listFeedbackResponseRatingMax = 5;
@@ -124,6 +222,40 @@ export const CreateFeedbackResponse = zod.object({
 
 
 /**
+ * Returns aggregate statistics for visible teacher feedback only
+ * @summary Get public teacher feedback statistics
+ */
+export const getFeedbackStatsResponseAverageRatingMin = 0;
+export const getFeedbackStatsResponseAverageRatingMax = 5;
+
+export const getFeedbackStatsResponseTotalCountMin = 0;
+
+export const getFeedbackStatsResponseDistributionOneStarMin = 0;
+
+export const getFeedbackStatsResponseDistributionTwoStarsMin = 0;
+
+export const getFeedbackStatsResponseDistributionThreeStarsMin = 0;
+
+export const getFeedbackStatsResponseDistributionFourStarsMin = 0;
+
+export const getFeedbackStatsResponseDistributionFiveStarsMin = 0;
+
+
+
+export const GetFeedbackStatsResponse = zod.object({
+  "averageRating": zod.number().min(getFeedbackStatsResponseAverageRatingMin).max(getFeedbackStatsResponseAverageRatingMax),
+  "totalCount": zod.number().int().min(getFeedbackStatsResponseTotalCountMin),
+  "distribution": zod.object({
+  "oneStar": zod.number().int().min(getFeedbackStatsResponseDistributionOneStarMin),
+  "twoStars": zod.number().int().min(getFeedbackStatsResponseDistributionTwoStarsMin),
+  "threeStars": zod.number().int().min(getFeedbackStatsResponseDistributionThreeStarsMin),
+  "fourStars": zod.number().int().min(getFeedbackStatsResponseDistributionFourStarsMin),
+  "fiveStars": zod.number().int().min(getFeedbackStatsResponseDistributionFiveStarsMin)
+})
+})
+
+
+/**
  * @summary List feedback for account management
  */
 export const listManagedFeedbackResponseOneRatingMax = 5;
@@ -149,8 +281,13 @@ export const UpdateFeedbackParams = zod.object({
   "feedbackId": zod.coerce.number().int()
 })
 
+export const updateFeedbackBodyReasonMax = 500;
+
+
+
 export const UpdateFeedbackBody = zod.object({
-  "isVisible": zod.boolean()
+  "isVisible": zod.boolean(),
+  "reason": zod.string().max(updateFeedbackBodyReasonMax).nullish()
 })
 
 export const updateFeedbackResponseOneRatingMax = 5;
@@ -176,6 +313,92 @@ export const DeleteFeedbackParams = zod.object({
 })
 
 export const DeleteFeedbackResponse = zod.void()
+
+
+/**
+ * @summary List feedback moderation history
+ */
+export const ListFeedbackHistoryParams = zod.object({
+  "feedbackId": zod.coerce.number().int()
+})
+
+export const ListFeedbackHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "feedbackId": zod.number().int(),
+  "action": zod.enum(['published', 'hidden', 'deleted']),
+  "reason": zod.string().nullish(),
+  "actorId": zod.string(),
+  "actorName": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListFeedbackHistoryResponse = zod.array(ListFeedbackHistoryResponseItem)
+
+
+/**
+ * @summary Report public feedback
+ */
+export const CreateFeedbackReportParams = zod.object({
+  "feedbackId": zod.coerce.number().int()
+})
+
+export const createFeedbackReportBodyDetailsMax = 500;
+
+
+
+export const CreateFeedbackReportBody = zod.object({
+  "reason": zod.enum(['spam', 'offensive', 'advertising', 'duplicate', 'other']),
+  "details": zod.string().max(createFeedbackReportBodyDetailsMax).nullish()
+})
+
+export const CreateFeedbackReportResponse = zod.object({
+  "id": zod.number().int(),
+  "feedbackId": zod.number().int(),
+  "reason": zod.enum(['spam', 'offensive', 'advertising', 'duplicate', 'other']),
+  "details": zod.string().nullish(),
+  "status": zod.enum(['open', 'reviewed', 'dismissed']),
+  "reviewedBy": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List feedback reports for moderators
+ */
+export const ListFeedbackReportsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "feedbackId": zod.number().int(),
+  "reason": zod.enum(['spam', 'offensive', 'advertising', 'duplicate', 'other']),
+  "details": zod.string().nullish(),
+  "status": zod.enum(['open', 'reviewed', 'dismissed']),
+  "reviewedBy": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListFeedbackReportsResponse = zod.array(ListFeedbackReportsResponseItem)
+
+
+/**
+ * @summary Resolve a feedback report
+ */
+export const UpdateFeedbackReportParams = zod.object({
+  "reportId": zod.coerce.number().int()
+})
+
+export const UpdateFeedbackReportBody = zod.object({
+  "status": zod.enum(['reviewed', 'dismissed'])
+})
+
+export const UpdateFeedbackReportResponse = zod.object({
+  "id": zod.number().int(),
+  "feedbackId": zod.number().int(),
+  "reason": zod.enum(['spam', 'offensive', 'advertising', 'duplicate', 'other']),
+  "details": zod.string().nullish(),
+  "status": zod.enum(['open', 'reviewed', 'dismissed']),
+  "reviewedBy": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
 
 
 /**
@@ -228,6 +451,10 @@ export const GetDashboardSummaryResponse = zod.object({
   "liveWebsites": zod.number().int(),
   "totalVisits": zod.number().int(),
   "registeredUsers": zod.number().int(),
+  "openRequests": zod.number().int(),
+  "pendingFeedback": zod.number().int(),
+  "activeEvents": zod.number().int(),
+  "newMembers": zod.number().int(),
   "uptime": zod.string()
 })
 
@@ -237,12 +464,288 @@ export const GetDashboardSummaryResponse = zod.object({
  */
 export const ListActivityResponseItem = zod.object({
   "id": zod.number().int(),
-  "type": zod.enum(['website_added', 'website_updated', 'website_deleted', 'netlify_imported', 'user_joined', 'role_changed']),
+  "type": zod.enum(['website_added', 'website_updated', 'website_deleted', 'netlify_imported', 'user_joined', 'role_changed', 'event_created', 'member_request_created', 'member_request_updated', 'feedback_published', 'feedback_hidden', 'feedback_deleted', 'feedback_reported', 'feedback_report_resolved', 'member_request_withdrawn', 'profile_updated']),
   "message": zod.string(),
   "actorName": zod.string(),
   "createdAt": zod.coerce.date()
 })
 export const ListActivityResponse = zod.array(ListActivityResponseItem)
+
+
+/**
+ * @summary List the administrator audit log
+ */
+export const ListAdminActivityResponseItem = zod.object({
+  "id": zod.number().int(),
+  "type": zod.enum(['website_added', 'website_updated', 'website_deleted', 'netlify_imported', 'user_joined', 'role_changed', 'event_created', 'member_request_created', 'member_request_updated', 'feedback_published', 'feedback_hidden', 'feedback_deleted', 'feedback_reported', 'feedback_report_resolved', 'member_request_withdrawn', 'profile_updated']),
+  "message": zod.string(),
+  "actorName": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminActivityResponse = zod.array(ListAdminActivityResponseItem)
+
+
+/**
+ * @summary List the current member's favorite websites
+ */
+export const ListMemberFavoritesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "url": zod.string().url(),
+  "githubUrl": zod.string().url().nullish(),
+  "imageUrl": zod.string().url().nullish(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['live', 'draft', 'paused']),
+  "visits": zod.number().int(),
+  "updatedAt": zod.coerce.date(),
+  "ownerName": zod.string()
+})
+export const ListMemberFavoritesResponse = zod.array(ListMemberFavoritesResponseItem)
+
+
+/**
+ * @summary Save a website to the member's favorites
+ */
+export const CreateMemberFavoriteParams = zod.object({
+  "websiteId": zod.coerce.number().int()
+})
+
+export const CreateMemberFavoriteResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "url": zod.string().url(),
+  "githubUrl": zod.string().url().nullish(),
+  "imageUrl": zod.string().url().nullish(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['live', 'draft', 'paused']),
+  "visits": zod.number().int(),
+  "updatedAt": zod.coerce.date(),
+  "ownerName": zod.string()
+})
+
+
+/**
+ * @summary Remove a website from the member's favorites
+ */
+export const DeleteMemberFavoriteParams = zod.object({
+  "websiteId": zod.coerce.number().int()
+})
+
+export const DeleteMemberFavoriteResponse = zod.void()
+
+
+/**
+ * @summary List the current member's project requests
+ */
+export const ListMemberRequestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "userEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'in_progress', 'closed', 'withdrawn']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMemberRequestsResponse = zod.array(ListMemberRequestsResponseItem)
+
+
+/**
+ * @summary Send a project request to the administrator
+ */
+export const createMemberRequestBodyMessageMin = 3;
+export const createMemberRequestBodyMessageMax = 1000;
+
+
+
+export const CreateMemberRequestBody = zod.object({
+  "message": zod.string().min(createMemberRequestBodyMessageMin).max(createMemberRequestBodyMessageMax)
+})
+
+export const CreateMemberRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "userEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'in_progress', 'closed', 'withdrawn']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List the status history of a member request
+ */
+export const ListMemberRequestHistoryParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const ListMemberRequestHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "requestId": zod.number().int(),
+  "status": zod.enum(['open', 'in_progress', 'closed', 'withdrawn']),
+  "message": zod.string(),
+  "actorId": zod.string(),
+  "actorName": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMemberRequestHistoryResponse = zod.array(ListMemberRequestHistoryResponseItem)
+
+
+/**
+ * @summary Add a message to a member request
+ */
+export const UpdateMemberRequestParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const updateMemberRequestBodyMessageMin = 3;
+export const updateMemberRequestBodyMessageMax = 1000;
+
+
+
+export const UpdateMemberRequestBody = zod.object({
+  "message": zod.string().min(updateMemberRequestBodyMessageMin).max(updateMemberRequestBodyMessageMax)
+})
+
+export const UpdateMemberRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "userEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'in_progress', 'closed', 'withdrawn']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Withdraw the current member's request
+ */
+export const WithdrawMemberRequestParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const WithdrawMemberRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "userEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'in_progress', 'closed', 'withdrawn']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List the current member's notifications
+ */
+export const ListMemberNotificationsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMemberNotificationsResponse = zod.array(ListMemberNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a member notification as read
+ */
+export const MarkMemberNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.number().int()
+})
+
+export const MarkMemberNotificationReadResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get the current member profile settings
+ */
+export const GetMemberProfileResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "avatarUrl": zod.string().url().nullable(),
+  "role": zod.enum(['admin', 'moderator', 'member']),
+  "profileVisibility": zod.enum(['private', 'public'])
+})
+
+
+/**
+ * @summary Update the current member profile settings
+ */
+export const UpdateMemberProfileBody = zod.object({
+  "profileVisibility": zod.enum(['private', 'public'])
+})
+
+export const UpdateMemberProfileResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "avatarUrl": zod.string().url().nullable(),
+  "role": zod.enum(['admin', 'moderator', 'member']),
+  "profileVisibility": zod.enum(['private', 'public'])
+})
+
+
+/**
+ * @summary List member requests for administrators
+ */
+export const ListManagedMemberRequestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "userEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'in_progress', 'closed', 'withdrawn']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListManagedMemberRequestsResponse = zod.array(ListManagedMemberRequestsResponseItem)
+
+
+/**
+ * @summary Update a member request status
+ */
+export const UpdateMemberRequestStatusParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const UpdateMemberRequestStatusBody = zod.object({
+  "status": zod.enum(['open', 'in_progress', 'closed'])
+})
+
+export const UpdateMemberRequestStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "userName": zod.string(),
+  "userEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['open', 'in_progress', 'closed', 'withdrawn']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a member request as an administrator
+ */
+export const DeleteManagedMemberRequestParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const DeleteManagedMemberRequestResponse = zod.void()
 
 
 /**
@@ -255,7 +758,8 @@ export const ListUsersResponseItem = zod.object({
   "avatarUrl": zod.string().url().nullish(),
   "role": zod.enum(['admin', 'moderator', 'member']),
   "joinedAt": zod.coerce.date(),
-  "lastActiveAt": zod.coerce.date()
+  "lastActiveAt": zod.coerce.date(),
+  "profileVisibility": zod.enum(['private', 'public']).optional()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -270,7 +774,8 @@ export const GetCurrentUserResponse = zod.object({
   "avatarUrl": zod.string().url().nullish(),
   "role": zod.enum(['admin', 'moderator', 'member']),
   "joinedAt": zod.coerce.date(),
-  "lastActiveAt": zod.coerce.date()
+  "lastActiveAt": zod.coerce.date(),
+  "profileVisibility": zod.enum(['private', 'public']).optional()
 })
 
 
@@ -292,7 +797,8 @@ export const UpdateUserRoleResponse = zod.object({
   "avatarUrl": zod.string().url().nullish(),
   "role": zod.enum(['admin', 'moderator', 'member']),
   "joinedAt": zod.coerce.date(),
-  "lastActiveAt": zod.coerce.date()
+  "lastActiveAt": zod.coerce.date(),
+  "profileVisibility": zod.enum(['private', 'public']).optional()
 })
 
 

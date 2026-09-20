@@ -79,8 +79,8 @@ async function fetchNetlifySites(token: string): Promise<NetlifySite[]> {
 
 router.post("/netlify/import", requireUser, async (req, res): Promise<void> => {
   const user = res.locals.currentUser as Awaited<ReturnType<typeof getCurrentUser>>;
-  if (!user || !hasRole(user, ["admin", "moderator"])) {
-    res.status(403).json({ error: "Admin or moderator role required" });
+  if (!user || !hasRole(user, ["admin"])) {
+    res.status(403).json({ error: "Admin role required" });
     return;
   }
 

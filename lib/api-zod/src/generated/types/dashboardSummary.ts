@@ -11,5 +11,9 @@ export interface DashboardSummary {
   liveWebsites: number;
   totalVisits: number;
   registeredUsers: number;
+  openRequests: number;
+  pendingFeedback: number;
+  activeEvents: number;
+  newMembers: number;
   uptime: string;
 }

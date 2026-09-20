@@ -1,2 +1,4 @@
 - [Generated API client typing](api-client-dom-iterable.md) — keep `dom.iterable` enabled so generated `Headers.entries()` calls typecheck.
 - [Netlify Functions and serverless-http](netlify-functions-cjs.md) — use a CommonJS function entry because ESM bundling can break serverless-http's dynamic Node requires.
+- [GitHub empty repository initialization](github-empty-repository.md) — seed a repository with one Contents API commit before using Git Data API blobs and trees.
+- [Managed Clerk secret recovery](managed-clerk-secret-recovery.md) — repair `secret-key-invalid` through the managed Clerk setup flow, never by editing Clerk secrets manually.

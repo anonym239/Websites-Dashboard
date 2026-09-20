@@ -8,7 +8,7 @@ import {
   UpdateUserRoleParams,
   UpdateUserRoleResponse,
 } from "@workspace/api-zod";
-import { getCurrentUser, hasRole, requireUser } from "../lib/auth";
+import { getCurrentUser, hasRole, isBootstrapAdminEmail, requireUser } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -27,7 +27,8 @@ router.get("/users", requireUser, async (_req, res): Promise<void> => {
           name: user.name,
           email: user.email,
           avatarUrl: user.avatarUrl,
-          role: user.role,
+           role: isBootstrapAdminEmail(user.email) ? "admin" : user.role,
+           profileVisibility: user.profileVisibility,
           joinedAt: user.joinedAt,
           lastActiveAt: user.lastActiveAt,
         }),
@@ -52,9 +53,19 @@ router.patch("/users/:userId/role", requireUser, async (req, res): Promise<void>
     res.status(400).json({ error: body.error.message });
     return;
   }
+  const existingUser = await db
+    .select()
+    .from(appUsersTable)
+    .where(eq(appUsersTable.id, params.data.userId))
+    .then((rows) => rows[0]);
+  if (!existingUser) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  const enforcedRole = isBootstrapAdminEmail(existingUser.email) ? "admin" : body.data.role;
   const [user] = await db
     .update(appUsersTable)
-    .set({ role: body.data.role })
+    .set({ role: enforcedRole })
     .where(eq(appUsersTable.id, params.data.userId))
     .returning();
   if (!user) {
@@ -63,7 +74,7 @@ router.patch("/users/:userId/role", requireUser, async (req, res): Promise<void>
   }
   await db.insert(activitiesTable).values({
     type: "role_changed",
-    message: `Changed ${user.name} to ${user.role}`,
+    message: `Changed ${user.name} to ${enforcedRole}`,
     actorName: currentUser.name,
   });
   res.json(
@@ -73,6 +84,7 @@ router.patch("/users/:userId/role", requireUser, async (req, res): Promise<void>
       email: user.email,
       avatarUrl: user.avatarUrl,
       role: user.role,
+      profileVisibility: user.profileVisibility,
       joinedAt: user.joinedAt,
       lastActiveAt: user.lastActiveAt,
     }),
