@@ -1,4 +1,636 @@
-data?.liveWebsites ?? live.length} live`} icon={Globe2} accent /><StatCard label="Aufrufe insgesamt" value={formatNumber(summary.data?.totalVisits ?? 0)} detail="über alle Websites" icon={CircleGauge} /><StatCard label="Registrierte Personen" value={summary.data?.registeredUsers ?? 0} detail="in deiner Übersicht" icon={Users} /><StatCard label="Verfügbarkeit" value={summary.data?.uptime ?? "—"} detail="Durchschnitt der letzten 30 Tage" icon={ActivityIcon} />{isAdmin && <><StatCard label="Offene Anfragen" value={summary.data?.openRequests ?? 0} detail="wartet auf Bearbeitung" icon={Send} accent /><StatCard label="Neue Mitglieder" value={summary.data?.newMembers ?? 0} detail="in den letzten 30 Tagen" icon={Users} /><StatCard label="Aktive Events" value={summary.data?.activeEvents ?? 0} detail="öffentlich sichtbar" icon={CirclePlus} /><StatCard label="Feedbackprüfung" value={summary.data?.pendingFeedback ?? 0} detail="ausgeblendete Einträge" icon={MessageSquareText} /></>}</>}</div>
+import { useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
+import { deDE } from "@clerk/localizations";
+import { publishableKeyFromHost } from "@clerk/react/internal";
+import { shadcn } from "@clerk/themes";
+import {
+  Activity as ActivityIcon,
+  ArrowDown,
+  ArrowUpRight,
+  Bell,
+  Check,
+  CircleAlert,
+  CircleGauge,
+  CirclePlus,
+  CloudDownload,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Github,
+  Globe2,
+  Heart,
+  LayoutDashboard,
+  Loader2,
+  LogOut,
+  Menu,
+  MoreHorizontal,
+  MessageSquareText,
+  Pencil,
+  RefreshCw,
+  Search,
+  Send,
+  Server,
+  ShieldCheck,
+  Star,
+  Trash2,
+  UserRound,
+  Users,
+  X,
+} from "lucide-react";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import {
+  AppUserRole,
+  type Activity,
+  type AppUser,
+  type Event,
+  type FeedbackModerationHistory,
+  type FeedbackReport,
+  type FeedbackStats,
+  type ManagedFeedback,
+  type MemberRequestHistory,
+  getListManagedEventsQueryKey,
+  getListManagedFeedbackQueryKey,
+  getListManagedMemberRequestsQueryKey,
+  getListAdminActivityQueryKey,
+  getListFeedbackHistoryQueryKey,
+  getListFeedbackReportsQueryKey,
+  getGetMemberProfileQueryKey,
+  getListMemberRequestHistoryQueryKey,
+  getListMemberFavoritesQueryKey,
+  getListMemberNotificationsQueryKey,
+  getListMemberRequestsQueryKey,
+  type Website,
+  useCreateEvent,
+  useDeleteFeedback,
+  useDeleteEvent,
+  useDeleteManagedMemberRequest,
+  getListFeedbackQueryKey,
+  useCreateWebsite,
+  useDeleteWebsite,
+  useGetCurrentUser,
+  useGetDashboardSummary,
+  getGetFeedbackStatsQueryKey,
+  useImportNetlifyWebsites,
+  useListActivity,
+  useListAdminActivity,
+  useListActiveEvents,
+  useListFeedback,
+  useListManagedEvents,
+  useListManagedFeedback,
+  useListUsers,
+  useListWebsites,
+  useCreateFeedback,
+  useCreateFeedbackReport,
+  useGetFeedbackStats,
+  useCreateMemberFavorite,
+  useCreateMemberRequest,
+  useDeleteMemberFavorite,
+  useListManagedMemberRequests,
+  useListMemberFavorites,
+  useListMemberNotifications,
+  useListMemberRequests,
+  useMarkMemberNotificationRead,
+  useGetMemberProfile,
+  useUpdateMemberProfile,
+  useListMemberRequestHistory,
+  useUpdateMemberRequest,
+  useWithdrawMemberRequest,
+  useUpdateMemberRequestStatus,
+  useUpdateFeedback,
+  useListFeedbackHistory,
+  useListFeedbackReports,
+  useUpdateFeedbackReport,
+  useUpdateEvent,
+  useUpdateUserRole,
+  useUpdateWebsite,
+  getGetDashboardSummaryQueryKey,
+  getListActivityQueryKey,
+  getListUsersQueryKey,
+  getListWebsitesQueryKey,
+} from "@workspace/api-client-react";
+import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation, useRoute } from "wouter";
+import { ErrorBoundary } from "@/components/error-boundary";
+import NotFound from "@/pages/not-found";
+import "./index.css";
+
+const queryClient = new QueryClient();
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const bootstrapAdminEmail = "alexanderfuchs304@gmail.com";
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: "clerk",
+  options: {
+    logoPlacement: "inside" as const,
+    logoLinkUrl: basePath || "/",
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: "#1cae85",
+    colorForeground: "#eef2f7",
+    colorMutedForeground: "#667487",
+    colorBackground: "#151c29",
+    colorInput: "#1f2a3d",
+    colorInputForeground: "#eef2f7",
+    colorDanger: "#d84b43",
+    colorNeutral: "#344257",
+    fontFamily: "Manrope, sans-serif",
+    borderRadius: "0.7rem",
+  },
+  elements: {
+    rootBox: "w-full flex justify-center",
+    cardBox: "bg-[#151c29] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-xl",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    headerTitle: "text-[#eef2f7] font-extrabold",
+    headerSubtitle: "text-[#aab6c6]",
+    socialButtonsBlockButtonText: "!text-[#182433] font-semibold",
+    formFieldLabel: "text-[#eef2f7] font-semibold",
+    footerActionLink: "text-[#63dbb4] font-bold",
+    footerActionText: "text-[#aab6c6]",
+    dividerText: "text-[#aab6c6]",
+    formButtonPrimary: "bg-[#1cae85] hover:bg-[#158363] text-[#14231f] font-bold",
+    formFieldInput: "bg-[#1f2a3d] border-[#344257] text-[#eef2f7]",
+    socialButtonsBlockButton: "!border-[#dce4e9] !bg-white hover:!bg-[#f3f6f8]",
+    footerAction: "border-t border-[#344257]",
+    dividerLine: "bg-[#344257]",
+    alert: "border-[#6d373e] bg-[#321f27]",
+    alertText: "text-[#ffaaa9]",
+    logoBox: "h-10",
+    logoImage: "h-10",
+    otpCodeFieldInput: "bg-[#1f2a3d] border-[#344257]",
+    formFieldRow: "gap-2",
+    main: "gap-5",
+  },
+};
+
+function BrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex items-center gap-3" data-testid="brand-mark">
+      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.22)]">
+        <span className="absolute h-3 w-3 rounded-[4px] bg-current opacity-90" />
+        <span className="absolute h-3 w-3 translate-x-2 translate-y-2 rounded-[4px] bg-current opacity-60" />
+      </div>
+      {!compact && (
+        <div className="leading-none">
+          <div className="text-[15px] font-extrabold tracking-[-.03em] text-sidebar-accent-foreground">Webspace</div>
+          <div className="mono-label mt-1 text-[9px] text-sidebar-foreground/60">projektübersicht</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Home() {
+  const queryClient = useQueryClient();
+  const { isSignedIn, isLoaded } = useUser();
+  const websites = useListWebsites();
+  const teacherFeedback = useListFeedback();
+  const feedbackStats = useGetFeedbackStats();
+  const activeEvents = useListActiveEvents();
+  const createFeedback = useCreateFeedback();
+  const createFeedbackReport = useCreateFeedbackReport();
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "live" | "draft" | "paused">("all");
+  const [teacherName, setTeacherName] = useState("");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [rating, setRating] = useState(0);
+  const [feedbackNotice, setFeedbackNotice] = useState("");
+  const [reportNotice, setReportNotice] = useState("");
+  const [eventOpen, setEventOpen] = useState(true);
+  const projects = websites.data ?? [];
+  const visibleProjects = projects.filter((website) => {
+    const matchesQuery = `${website.name} ${website.url} ${website.description ?? ""}`.toLowerCase().includes(query.toLowerCase());
+    return matchesQuery && (statusFilter === "all" || website.status === statusFilter);
+  });
+  const liveProjects = projects.filter((website) => website.status === "live").length;
+  const reportFeedback = (feedbackId: number) => {
+    const details = window.prompt("Warum möchtest du dieses Feedback melden? (optional)");
+    if (details === null) return;
+    createFeedbackReport.mutate(
+      { feedbackId, data: { reason: "other", details: details.trim() || null } },
+      {
+        onSuccess: () => setReportNotice("Danke. Die Meldung wurde zur Prüfung weitergeleitet."),
+        onError: () => setReportNotice("Diese Meldung konnte nicht gespeichert werden."),
+      },
+    );
+  };
+  const handleProjectsClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const projectsSection = document.getElementById("projects");
+    if (!projectsSection) return;
+
+    const scrollingElement = document.scrollingElement ?? document.documentElement;
+    const startTop = scrollingElement.scrollTop || window.scrollY;
+    const targetTop = Math.max(0, projectsSection.getBoundingClientRect().top + startTop - 24);
+    const distance = targetTop - startTop;
+    const duration = Math.min(900, Math.max(400, Math.abs(distance) * 0.55));
+    const startedAt = performance.now();
+    const easeInOut = (progress: number) => progress < 0.5
+      ? 2 * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const nextTop = startTop + distance * easeInOut(progress);
+      scrollingElement.scrollTop = nextTop;
+      document.documentElement.scrollTop = nextTop;
+      document.body.scrollTop = nextTop;
+      window.scrollTo(0, nextTop);
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+    window.history.replaceState(null, "", "#projects");
+  };
+  const submitFeedback = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!teacherName.trim() || !feedbackText.trim() || rating < 1) {
+      setFeedbackNotice("Bitte Name, Feedback und eine Sternebewertung auswählen.");
+      return;
+    }
+
+    createFeedback.mutate(
+      { data: { teacherName: teacherName.trim(), feedback: feedbackText.trim(), rating } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListFeedbackQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetFeedbackStatsQueryKey() });
+          setTeacherName("");
+          setFeedbackText("");
+          setRating(0);
+          setFeedbackNotice("Vielen Dank für dein Feedback.");
+        },
+        onError: (error) => setFeedbackNotice(getFeedbackSubmissionErrorMessage(error)),
+      },
+    );
+  };
+
+  return (
+    <div className="min-h-[100dvh] bg-background text-foreground">
+      <header className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-5 md:px-10">
+        <BrandMark />
+        <div className="flex items-center gap-3">
+          <span className="hidden text-xs text-muted-foreground sm:inline">{isLoaded && isSignedIn ? "Angemeldet" : "Öffentliche Ansicht · ohne Anmeldung"}</span>
+          {isSignedIn ? <Link href="/dashboard" className="focus-ring inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5" data-testid="link-dashboard-public"><LayoutDashboard className="h-4 w-4" /> Zum Dashboard</Link> : <Link href="/sign-in" className="focus-ring rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-bold transition-colors hover:bg-muted" data-testid="link-sign-in">Verwaltung</Link>}
+        </div>
+      </header>
+      <main className="mx-auto max-w-[1180px] px-5 pb-16 md:px-10">
+        <section className="page-enter flex min-h-[calc(100dvh-82px)] flex-col justify-center pb-20 pt-12 md:pt-16">
+          <div className="max-w-4xl">
+            <div className="mono-label mb-5 flex items-center gap-2 text-primary"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> öffentliche projektübersicht</div>
+            <h1 className="max-w-4xl text-6xl font-extrabold leading-[.92] tracking-[-.075em] sm:text-8xl">Alex&apos; Websites<span className="text-primary">.</span></h1>
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-muted-foreground">Eine Übersicht meiner Projekte, Websites und Ideen. Schau dir an, was ich programmiert habe, und öffne jedes Projekt direkt.</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <a href="#projects" onClick={handleProjectsClick} className="focus-ring inline-flex items-center gap-3 rounded-xl bg-primary px-5 py-3.5 text-sm font-extrabold text-primary-foreground shadow-[0_10px_25px_hsl(var(--primary)/.2)] transition-transform hover:-translate-y-0.5" data-testid="link-view-projects">Projekte ansehen <ArrowDown className="h-4 w-4" /></a>
+              <a href="https://github.com/anonym239" target="_blank" rel="noreferrer" className="focus-ring inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3.5 text-sm font-extrabold transition-colors hover:border-primary/50 hover:bg-muted" data-testid="link-public-github-profile"><Github className="h-4 w-4" /> Alex&apos; GitHub-Profil ansehen <ArrowUpRight className="h-3.5 w-3.5" /></a>
+            </div>
+            <form onSubmit={submitFeedback} className="mt-7 max-w-3xl rounded-2xl border border-border bg-card/80 p-4 shadow-[0_18px_45px_hsl(220_32%_16%/.08)] backdrop-blur-sm md:p-5" data-testid="form-public-feedback">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                <div><div className="mono-label text-primary">deine meinung zählt</div><h2 className="mt-1 text-lg font-extrabold tracking-[-.03em]">Wie findest du meine Projekte?</h2></div>
+                <div className="text-xs text-muted-foreground">Ohne Login · dauert 30 Sekunden</div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-[.7fr_1.3fr]">
+                <label className="block"><span className="mb-1.5 block text-xs font-bold">Dein Name</span><input required minLength={2} maxLength={80} value={teacherName} onChange={(event) => setTeacherName(event.target.value)} className="focus-ring h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground" placeholder="z. B. Alex" data-testid="input-feedback-name" /></label>
+                <label className="block"><span className="mb-1.5 block text-xs font-bold">Dein Feedback</span><textarea required minLength={3} maxLength={500} value={feedbackText} onChange={(event) => setFeedbackText(event.target.value)} rows={2} className="focus-ring w-full resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground" placeholder="Was gefällt dir an den Projekten?" data-testid="textarea-feedback-text" /></label>
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3" role="radiogroup" aria-label="Sternebewertung">
+                  <span className="text-xs font-bold">Bewertung</span>
+                  <div className="flex items-center gap-1">{[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" onClick={() => setRating(star)} aria-label={`${star} von 5 Sternen`} aria-pressed={rating === star} className={`focus-ring rounded-md p-1 transition-transform hover:scale-110 ${star <= rating ? "text-primary" : "text-muted-foreground/45"}`} data-testid={`button-feedback-star-${star}`}><Star className="h-5 w-5" fill="currentColor" /></button>)}</div>
+                  <span className="text-xs text-muted-foreground">{rating ? `${rating}/5` : "Auswählen"}</span>
+                </div>
+                <button type="submit" disabled={createFeedback.isPending} className="focus-ring inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60" data-testid="button-submit-feedback">{createFeedback.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Feedback senden</button>
+              </div>
+              {feedbackNotice && <p className={`mt-3 text-xs font-semibold ${feedbackNotice.startsWith("Vielen") ? "text-primary" : "text-destructive"}`} role="status" data-testid="feedback-notice">{feedbackNotice}</p>}
+            </form>
+            <section className="mt-7 max-w-5xl" aria-label="Rückmeldungen">
+              <div className="mb-2 flex items-center justify-between"><div className="mono-label text-muted-foreground">rückmeldungen</div><div className="text-[10px] text-muted-foreground">{feedbackStats.data ? feedbackCountLabel(feedbackStats.data.totalCount) : teacherFeedback.data ? feedbackCountLabel(teacherFeedback.data.length) : "Wird geladen"}</div></div>
+              {feedbackStats.isLoading ? <div className="skeleton h-32 rounded-2xl" /> : feedbackStats.isError ? <FeedbackStatsError onRetry={() => feedbackStats.refetch()} /> : feedbackStats.data && <FeedbackStatsSummary stats={feedbackStats.data} />}
+               <div className="mt-3">{reportNotice && <p className="mb-2 text-xs font-semibold text-primary" role="status">{reportNotice}</p>}{teacherFeedback.isLoading ? <div className="skeleton h-20 rounded-2xl" /> : teacherFeedback.isError ? <ErrorState onRetry={() => teacherFeedback.refetch()} /> : teacherFeedback.data?.length ? <div className="feedback-marquee-viewport rounded-2xl border border-border/80 bg-card/60 py-3"><div className={`feedback-marquee-track gap-3 px-3 ${teacherFeedback.data.length > 1 ? "feedback-marquee-track-moving" : ""}`}>{teacherFeedback.data.map((item) => <article key={item.id} className="w-[260px] shrink-0 rounded-xl border border-border bg-background/80 p-3 sm:w-[310px]"><div className="flex items-center justify-between gap-3"><span className="truncate text-xs font-extrabold">{item.teacherName}</span><span className="flex shrink-0 text-primary" aria-label={`${item.rating} von 5 Sternen`}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} className="h-3 w-3" fill={star <= item.rating ? "currentColor" : "none"} />)}</span></div><p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">„{item.feedback}“</p><button type="button" onClick={() => reportFeedback(item.id)} disabled={createFeedbackReport.isPending} className="mt-2 text-[10px] font-bold text-muted-foreground hover:text-destructive disabled:opacity-50">Feedback melden</button></article>)}</div></div> : <div className="feedback-empty-state rounded-2xl border border-dashed border-border bg-card/50 px-4 py-3" aria-live="polite"><div className="feedback-empty-icon"><Star className="h-4 w-4" fill="currentColor" /></div><div><div className="feedback-empty-title text-xs font-extrabold">Seien Sie der Erste</div><div className="mt-0.5 text-[11px] text-muted-foreground">Ihre Rückmeldung erscheint hier.</div></div></div>}</div>
+            </section>
+          </div>
+          <div className="mt-16 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border bg-card p-4"><div className="mono-label text-muted-foreground">projekte</div><div className="mt-3 text-3xl font-extrabold tracking-[-.06em]">{projects.length}</div></div>
+            <div className="rounded-2xl border border-border bg-card p-4"><div className="mono-label text-muted-foreground">live</div><div className="mt-3 text-3xl font-extrabold tracking-[-.06em]">{liveProjects}</div></div>
+            <div className="col-span-2 rounded-2xl border border-primary/20 bg-accent/45 p-4 sm:col-span-1"><div className="mono-label text-primary">zugang</div><div className="mt-3 text-sm font-extrabold">Für alle offen</div><div className="mt-1 text-xs text-muted-foreground">Ohne Login ansehen</div></div>
+          </div>
+        </section>
+        <section id="projects" className="scroll-mt-6 rounded-[2rem] border border-border bg-card p-5 shadow-[0_24px_70px_hsl(220_32%_16%/.08)] md:p-7">
+          <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 sm:flex-row sm:items-end">
+            <div><div className="mono-label text-primary">alex&apos; projekte</div><h2 className="mt-1 text-2xl font-extrabold tracking-[-.04em]">Alle Websites auf einen Blick</h2><p className="mt-2 max-w-xl text-sm text-muted-foreground">Suche ein Projekt oder filtere nach dem aktuellen Stand.</p></div>
+            <div className="text-xs text-muted-foreground">{visibleProjects.length} von {projects.length} sichtbar</div>
+          </div>
+          <div className="mt-5 flex flex-col gap-3 md:flex-row">
+            <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><span className="sr-only">Projekte durchsuchen</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Projekte durchsuchen..." className="focus-ring h-11 w-full rounded-xl border border-input bg-background pl-10 pr-3 text-sm outline-none placeholder:text-muted-foreground" data-testid="input-search-public-projects" /></label>
+            <div className="flex flex-wrap items-center gap-2">{(["all", "live", "draft", "paused"] as const).map((status) => <button key={status} onClick={() => setStatusFilter(status)} className={`rounded-xl px-3 py-2.5 text-xs font-bold transition-colors ${statusFilter === status ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`button-public-filter-${status}`}>{status === "all" ? "Alle" : status === "live" ? "Live" : status === "draft" ? "Entwurf" : "Pausiert"}</button>)}</div>
+          </div>
+           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+             {websites.isLoading ? [1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="skeleton h-64 rounded-2xl" />) : visibleProjects.length > 0 ? visibleProjects.map((website) => <article key={website.id} className="group overflow-hidden rounded-2xl border border-border bg-background transition-all hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl">
+               <Link href={`/projects/${website.id}`} className="block" data-testid={`link-directory-${website.id}`}>
+                 <div className="relative aspect-[1.7/1] overflow-hidden bg-gradient-to-br from-accent to-background">{website.imageUrl ? <img src={website.imageUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center text-accent-foreground"><Globe2 className="h-10 w-10 opacity-70" /></div>}<div className="absolute left-3 top-3 rounded-full border border-white/10 bg-background/80 px-2.5 py-1 text-[10px] font-extrabold backdrop-blur-md">{website.status === "live" ? "Live" : website.status === "draft" ? "Entwurf" : "Pausiert"}</div><ArrowUpRight className="absolute right-3 top-3 h-4 w-4 text-white drop-shadow-md transition-colors group-hover:text-primary" /></div>
+                 <div className="p-4"><div className="truncate text-base font-extrabold">{website.name}</div><div className="mt-1 truncate text-xs text-muted-foreground">{website.url.replace(/^https?:\/\//, "")}</div>{website.description && <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">{website.description}</p>}</div>
+               </Link>
+               <div className="flex flex-wrap items-center gap-2 px-4 pb-4">
+                 <Link href={`/projects/${website.id}`} className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-2 text-xs font-extrabold text-accent-foreground transition-colors hover:bg-primary/20 hover:text-primary" data-testid={`link-project-detail-${website.id}`}>Details <ArrowUpRight className="h-3 w-3" /></Link>
+                 <a href={website.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid={`link-open-website-${website.id}`}>Website <ExternalLink className="h-3 w-3" /></a>
+                 {website.githubUrl && <a href={website.githubUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs font-extrabold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid={`link-public-github-${website.id}`}><Github className="h-3.5 w-3.5" /> GitHub</a>}
+               </div>
+             </article>) : <div className="sm:col-span-2 lg:col-span-3"><EmptyState compact title={query || statusFilter !== "all" ? "Keine passenden Projekte" : "Noch keine Websites"} message={query || statusFilter !== "all" ? "Versuche eine andere Suche oder einen anderen Filter." : "Sobald ein Projekt veröffentlicht ist, erscheint es hier."} /></div>}
+           </div>
+        </section>
+      </main>
+       <footer className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-8 text-xs text-muted-foreground md:px-10"><span className="mono-label text-[9px]">ALEX&apos; WEBSITES / PROJEKTÜBERSICHT</span><span>Gebaut mit Neugier.</span></footer>
+       {activeEvents.data?.[0] && eventOpen && <PublicEventModal event={activeEvents.data[0]} onClose={() => setEventOpen(false)} />}
+    </div>
+  );
+}
+
+function PublicEventModal({ event, onClose }: { event: Event; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/45 px-5 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="public-event-title">
+      <div className="page-enter relative w-full max-w-lg rounded-[2rem] border border-primary/25 bg-card p-6 shadow-2xl md:p-8">
+        <button onClick={onClose} className="focus-ring absolute right-4 top-4 rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Event schließen" data-testid="button-close-public-event">
+          <X className="h-4 w-4" />
+        </button>
+        <div className="mono-label pr-8 text-primary">neuigkeiten</div>
+        <h2 id="public-event-title" className="mt-3 pr-8 text-2xl font-extrabold tracking-[-.04em]">{event.title}</h2>
+        {event.imageUrl && <img src={event.imageUrl} alt="" className="mt-5 max-h-64 w-full rounded-xl object-cover" loading="lazy" />}
+        <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{event.message}</p>
+        <button onClick={onClose} className="focus-ring mt-7 inline-flex rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5" data-testid="button-view-public-event">
+          Verstanden
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectDetailPage() {
+  const [, params] = useRoute<{ websiteId: string }>("/projects/:websiteId");
+  const { isSignedIn } = useUser();
+  const queryClient = useQueryClient();
+  const websites = useListWebsites();
+  const favorites = useListMemberFavorites({ query: { queryKey: getListMemberFavoritesQueryKey(), enabled: Boolean(isSignedIn) } });
+  const addFavorite = useCreateMemberFavorite();
+  const removeFavorite = useDeleteMemberFavorite();
+  const websiteId = Number(params?.websiteId);
+  const website = Number.isInteger(websiteId) ? websites.data?.find((item) => item.id === websiteId) : undefined;
+  const isFavorite = website ? Boolean(favorites.data?.some((item) => item.id === website.id)) : false;
+  const toggleFavorite = () => {
+    if (!website) return;
+    const options = { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListMemberFavoritesQueryKey() }) };
+    if (isFavorite) removeFavorite.mutate({ websiteId: website.id }, options);
+    else addFavorite.mutate({ websiteId: website.id }, options);
+  };
+
+  return (
+    <div className="min-h-[100dvh] bg-background text-foreground">
+      <header className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-5 md:px-10">
+        <Link href="/" aria-label="Zur Projektübersicht">
+          <BrandMark />
+        </Link>
+        <div className="flex items-center gap-2">
+          {isSignedIn ? <Link href="/dashboard" className="focus-ring inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5" data-testid="link-dashboard-detail"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link> : <Link href="/sign-in" className="focus-ring rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-bold transition-colors hover:bg-muted" data-testid="link-sign-in-detail">Anmelden</Link>}
+          <Link href="/#projects" className="focus-ring inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-bold transition-colors hover:bg-muted" data-testid="link-back-projects-header"><ArrowDown className="h-4 w-4 rotate-90" /> Alle Projekte</Link>
+        </div>
+      </header>
+      <main className="mx-auto max-w-[1180px] px-5 pb-16 md:px-10">
+        <div className="page-enter">
+          {websites.isLoading ? (
+            <div className="py-12">
+              <div className="skeleton h-5 w-36 rounded-full" />
+              <div className="mt-6 grid gap-6 lg:grid-cols-[1.08fr_.92fr]">
+                <div className="skeleton aspect-[1.35/1] rounded-[2rem]" />
+                <div className="space-y-4 py-4">
+                  <div className="skeleton h-12 w-3/4 rounded-xl" />
+                  <div className="skeleton h-24 rounded-xl" />
+                  <div className="skeleton h-12 w-56 rounded-xl" />
+                </div>
+              </div>
+            </div>
+          ) : websites.isError ? (
+            <div className="mx-auto max-w-xl py-20">
+              <EmptyState title="Projekt konnte nicht geladen werden" message="Die öffentliche Projektübersicht konnte den Dienst nicht erreichen." action={<button onClick={() => websites.refetch()} className="focus-ring rounded-lg bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground" data-testid="button-retry-project-detail">Erneut versuchen</button>} />
+            </div>
+          ) : !website ? (
+            <div className="mx-auto max-w-xl py-20">
+              <EmptyState title="Projekt nicht gefunden" message="Dieses Projekt gibt es nicht oder es wurde aus der Übersicht entfernt." action={<Link href="/#projects" className="focus-ring inline-flex rounded-lg bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground" data-testid="link-back-projects-empty">Zur Projektübersicht</Link>} />
+            </div>
+          ) : (
+            <>
+              <Link href="/#projects" className="focus-ring inline-flex items-center gap-2 pt-8 text-xs font-extrabold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-back-projects">
+                <ArrowDown className="h-4 w-4 rotate-90" />
+                Zur Projektübersicht
+              </Link>
+              <section className="mt-5 grid gap-6 lg:grid-cols-[1.08fr_.92fr] lg:items-stretch" aria-labelledby="project-detail-title" data-testid={`project-detail-${website.id}`}>
+                <div className="relative aspect-[1.35/1] overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-accent via-card to-background shadow-[0_24px_70px_hsl(220_32%_16%/.08)]">
+                  {website.imageUrl ? (
+                    <img src={website.imageUrl} alt={`Vorschaubild von ${website.name}`} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-accent-foreground">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-foreground/10">
+                        <Globe2 className="h-8 w-8 opacity-75" />
+                      </div>
+                      <span className="text-xs font-bold text-muted-foreground">Kein Vorschaubild vorhanden</span>
+                    </div>
+                  )}
+                  <div className="absolute left-5 top-5 rounded-full border border-white/10 bg-background/85 px-3 py-1.5 text-[10px] font-extrabold backdrop-blur-md">
+                    {websiteStatusLabel(website.status)}
+                  </div>
+                </div>
+                <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-card p-6 shadow-[0_24px_70px_hsl(220_32%_16%/.08)] md:p-8">
+                  <div className="mono-label text-primary">projekt / {website.id.toString().padStart(2, "0")}</div>
+                  <h1 id="project-detail-title" className="mt-3 text-4xl font-extrabold leading-[.95] tracking-[-.06em] sm:text-6xl">{website.name}<span className="text-primary">.</span></h1>
+                  <div className="mt-5 flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                    <span className={`h-2 w-2 rounded-full ${website.status === "live" ? "bg-primary" : website.status === "paused" ? "bg-amber-500" : "bg-muted-foreground/60"}`} />
+                    {websiteStatusLabel(website.status)}
+                  </div>
+                  <p className="mt-6 text-base leading-7 text-muted-foreground">
+                    {website.description || "Für dieses Projekt ist noch keine Beschreibung hinterlegt."}
+                  </p>
+                  <div className="mt-8 flex flex-wrap gap-3">
+                    <a href={website.url} target="_blank" rel="noreferrer" className="focus-ring inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground shadow-[0_10px_25px_hsl(var(--primary)/.2)] transition-transform hover:-translate-y-0.5" data-testid={`link-detail-live-${website.id}`}>
+                      Website öffnen
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                    {website.githubUrl ? (
+                      <a href={website.githubUrl} target="_blank" rel="noreferrer" className="focus-ring inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm font-extrabold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid={`link-detail-github-${website.id}`}>
+                        <Github className="h-4 w-4" />
+                        GitHub
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center rounded-xl border border-dashed border-border px-4 py-3 text-xs font-semibold text-muted-foreground" data-testid={`text-detail-no-github-${website.id}`}>
+                        Kein öffentliches GitHub-Repository
+                      </span>
+                    )}
+                    {isSignedIn && <button onClick={toggleFavorite} disabled={addFavorite.isPending || removeFavorite.isPending} className={`focus-ring inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-extrabold transition-colors disabled:opacity-50 ${isFavorite ? "border-primary/30 bg-accent text-primary" : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`button-favorite-project-${website.id}`}><Heart className="h-4 w-4" fill={isFavorite ? "currentColor" : "none"} /> {isFavorite ? "Gemerkt" : "Projekt merken"}</button>}
+                  </div>
+                  <div className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
+                    <span className="font-bold text-foreground">Live-Adresse</span>
+                    <span className="mx-2 text-border">/</span>
+                    <span className="break-all">{website.url.replace(/^https?:\/\//, "")}</span>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      </main>
+      <footer className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-8 text-xs text-muted-foreground md:px-10">
+        <span className="mono-label text-[9px]">ALEX&apos; WEBSITES / PROJEKTDETAIL</span>
+        <Link href="/#projects" className="font-semibold hover:text-foreground">Zur Übersicht</Link>
+      </footer>
+    </div>
+  );
+}
+
+function websiteStatusLabel(status: Website["status"]) {
+  return status === "live" ? "Live" : status === "draft" ? "Entwurf" : "Pausiert";
+}
+
+function EmptyState({ title, message, action, compact = false }: { title: string; message: string; action?: ReactNode; compact?: boolean }) {
+  return <div className={`flex flex-col items-center justify-center text-center ${compact ? "min-h-32" : "min-h-64"} rounded-xl border border-dashed border-border bg-card/50 p-6`} data-testid="state-empty"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground"><Server className="h-5 w-5" /></div><h3 className="mt-4 text-sm font-extrabold">{title}</h3><p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">{message}</p>{action && <div className="mt-4">{action}</div>}</div>;
+}
+
+function feedbackCountLabel(count: number) {
+  return `${count} ${count === 1 ? "veröffentlichte Bewertung" : "veröffentlichte Bewertungen"}`;
+}
+
+function getFeedbackSubmissionErrorMessage(error: unknown) {
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as { status?: unknown; data?: unknown };
+    if (
+      (candidate.status === 409 || candidate.status === 429) &&
+      typeof candidate.data === "object" &&
+      candidate.data !== null &&
+      typeof (candidate.data as { error?: unknown }).error === "string"
+    ) {
+      return (candidate.data as { error: string }).error;
+    }
+  }
+
+  return "Das Feedback konnte gerade nicht gespeichert werden.";
+}
+
+function FeedbackStatsSummary({ stats }: { stats: FeedbackStats }) {
+  const rows = [
+    { label: "5", count: stats.distribution.fiveStars },
+    { label: "4", count: stats.distribution.fourStars },
+    { label: "3", count: stats.distribution.threeStars },
+    { label: "2", count: stats.distribution.twoStars },
+    { label: "1", count: stats.distribution.oneStar },
+  ];
+  const hasRatings = stats.totalCount > 0;
+  const roundedAverage = Math.round(stats.averageRating);
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-accent/35 p-4 sm:p-5" data-testid="feedback-stats">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+        <div className="min-w-[155px]">
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-extrabold tracking-[-.06em]" data-testid="feedback-average-rating">
+              {hasRatings ? stats.averageRating.toFixed(1).replace(".", ",") : "—"}
+            </span>
+            <span className="text-xs font-bold text-muted-foreground">/ 5</span>
+          </div>
+          <div className="mt-1 flex items-center gap-0.5 text-primary" aria-label={hasRatings ? `${stats.averageRating.toFixed(1)} von 5 Sternen im Durchschnitt` : "Noch keine Bewertung"}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star key={star} className="h-3.5 w-3.5" fill={star <= roundedAverage ? "currentColor" : "none"} />
+            ))}
+          </div>
+          <p className="mt-2 text-xs font-semibold text-muted-foreground">
+            {hasRatings ? feedbackCountLabel(stats.totalCount) : "Noch keine veröffentlichte Bewertung"}
+          </p>
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5" aria-label="Verteilung der Sternebewertungen">
+          {rows.map((row) => (
+            <div key={row.label} className="flex items-center gap-2 text-[11px]" aria-label={`${row.label} Sterne: ${row.count} (${stats.totalCount ? Math.round((row.count / stats.totalCount) * 100) : 0} Prozent)`}>
+              <span className="w-3 text-right font-bold text-muted-foreground">{row.label}</span>
+              <Star className="h-3 w-3 shrink-0 text-primary" fill="currentColor" />
+              <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-background/70">
+                <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${stats.totalCount ? (row.count / stats.totalCount) * 100 : 0}%` }} />
+              </div>
+              <span className="w-5 text-right font-semibold text-muted-foreground">{row.count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeedbackStatsError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs" data-testid="feedback-stats-error">
+      <span className="text-muted-foreground">Die Bewertungsstatistik konnte gerade nicht geladen werden.</span>
+      <button onClick={onRetry} className="focus-ring shrink-0 rounded-lg border border-border bg-card px-3 py-2 font-bold hover:bg-muted" data-testid="button-retry-feedback-stats">
+        Erneut versuchen
+      </button>
+    </div>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center" data-testid="state-error"><CircleAlert className="h-5 w-5 text-destructive" /><h3 className="mt-3 text-sm font-extrabold">Ansicht konnte nicht geladen werden</h3><p className="mt-1 text-xs text-muted-foreground">Die Projektübersicht konnte den Dienst nicht erreichen.</p><button onClick={onRetry} className="focus-ring mt-4 inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold hover:bg-muted" data-testid="button-retry"><RefreshCw className="h-3.5 w-3.5" /> Erneut versuchen</button></div>;
+}
+
+function SkeletonRows({ count = 4 }: { count?: number }) {
+  return <div className="space-y-2" data-testid="state-loading">{Array.from({ length: count }).map((_, index) => <div key={index} className="skeleton h-16 rounded-xl" />)}</div>;
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  const [location, setLocation] = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useUser();
+  const currentUser = useGetCurrentUser();
+  const { signOut } = useClerk();
+   const isAdmin = currentUser.data?.role === "admin";
+   const canManageFeedback = isAdmin || currentUser.data?.role === "moderator";
+      const nav = [{ href: "/dashboard", label: "Übersicht", icon: LayoutDashboard }, { href: "/profile", label: "Mein Profil", icon: UserRound }, ...(isAdmin ? [{ href: "/websites", label: "Websites", icon: Globe2 }] : []), ...(canManageFeedback ? [{ href: "/feedback", label: "Feedback", icon: MessageSquareText }] : []), ...(isAdmin ? [{ href: "/events", label: "Events", icon: CirclePlus }] : []), ...(isAdmin ? [{ href: "/users", label: "Personen", icon: Users }] : []), ...(isAdmin ? [{ href: "/requests", label: "Anfragen", icon: Send }] : []), ...(isAdmin ? [{ href: "/activity", label: "Protokoll", icon: ActivityIcon }] : [])];
+  return <div className="min-h-[100dvh] bg-background text-foreground">
+    <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col bg-sidebar px-4 py-5 text-sidebar-foreground transition-transform duration-300 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <div className="flex items-center justify-between px-2"><BrandMark /><button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden" data-testid="button-close-menu"><X className="h-4 w-4" /></button></div>
+       <div className="mt-12 px-2 mono-label text-[9px] text-sidebar-foreground/45">arbeitsbereich</div>
+      <nav className="mt-3 space-y-1" aria-label="Primary navigation">{nav.map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMobileOpen(false)} className={`focus-ring flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${location === href ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"}`} data-testid={`link-nav-${label.toLowerCase()}`}><Icon className="h-[17px] w-[17px]" />{label}{location === href && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}</Link>)}</nav>
+       <div className="mt-auto rounded-2xl border border-sidebar-border bg-sidebar-accent/45 p-4"><div className="flex items-center gap-2 text-xs font-bold text-sidebar-accent-foreground"><ShieldCheck className="h-4 w-4 text-primary" /> Bereich geschützt</div><p className="mt-2 text-[11px] leading-5 text-sidebar-foreground/55">Deine Projektübersicht ist sicher.</p></div>
+      <div className="mt-4 flex items-center gap-3 border-t border-sidebar-border px-2 pt-4"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">{(user?.firstName?.[0] ?? "A")}{(user?.lastName?.[0] ?? "")}</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-bold text-sidebar-accent-foreground">{user?.fullName ?? "Account"}</div><div className="truncate text-[10px] text-sidebar-foreground/55">{user?.primaryEmailAddress?.emailAddress ?? "Connected"}</div></div><button onClick={() => signOut({ redirectUrl: basePath || "/" })} className="rounded-lg p-1.5 text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" title="Sign out" data-testid="button-sign-out"><LogOut className="h-4 w-4" /></button></div>
+    </aside>
+    {mobileOpen && <button className="fixed inset-0 z-30 bg-foreground/30 md:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation" data-testid="button-overlay" />}
+    <div className="md:pl-[248px]">
+       <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur-md md:px-10"><div className="flex items-center gap-3"><button className="rounded-lg p-2 hover:bg-muted md:hidden" onClick={() => setMobileOpen(true)} data-testid="button-open-menu"><Menu className="h-5 w-5" /></button><div className="mono-label hidden text-muted-foreground sm:block">{location === "/dashboard" ? "bereich / übersicht" : `bereich / ${location.replace("/", "")}`}</div></div><div className="flex items-center gap-3"><div className="hidden items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground sm:flex"><Search className="h-3.5 w-3.5" /><span>Suchen</span><kbd className="ml-5 rounded border border-border px-1.5 py-0.5 font-mono text-[9px]">K</kbd></div><div className="h-7 w-px bg-border" /><div className="text-right"><div className="text-xs font-extrabold">{user?.firstName ?? "Dein"} <span className="hidden sm:inline">{user?.lastName ?? "Bereich"}</span></div><div className="mono-label text-[9px] text-primary">{currentUser.isLoading ? "Wird geladen" : currentUser.isError ? "Rolle nicht geladen" : isAdmin ? "Admin" : currentUser.data?.role === "moderator" ? "Moderator" : "Mitglied"}</div></div></div></header>
+      <main className="mx-auto max-w-[1440px] p-5 md:p-10">{children}</main>
+    </div>
+  </div>;
+}
+
+function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
+  return <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><div className="mono-label text-primary">{eyebrow}</div><h1 className="mt-2 text-3xl font-extrabold tracking-[-.05em] md:text-[2.6rem]">{title}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p></div>{action && <div className="shrink-0">{action}</div>}</div>;
+}
+
+function StatCard({ label, value, detail, icon: Icon, accent = false }: { label: string; value: string | number; detail: string; icon: typeof Globe2; accent?: boolean }) {
+  return <div className={`rounded-2xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-md ${accent ? "border-primary/20 bg-accent/45" : "border-border bg-card"}`} data-testid={`stat-${label.toLowerCase().replace(/\s/g, "-")}`}><div className="flex items-start justify-between"><span className="mono-label text-muted-foreground">{label}</span><div className={`rounded-lg p-2 ${accent ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}><Icon className="h-4 w-4" /></div></div><div className="mt-5 text-3xl font-extrabold tracking-[-.05em]">{value}</div><div className={`mt-1 text-xs font-semibold ${accent ? "text-primary" : "text-muted-foreground"}`}>{detail}</div></div>;
+}
+
+function DashboardPage() {
+  const currentUser = useGetCurrentUser();
+  const summary = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
+  const websites = useListWebsites({ query: { queryKey: getListWebsitesQueryKey() } });
+  const activity = useListActivity({ query: { queryKey: getListActivityQueryKey() } });
+  const favorites = useListMemberFavorites({ query: { queryKey: getListMemberFavoritesQueryKey() } });
+  const removeFavorite = useDeleteMemberFavorite();
+  const notifications = useListMemberNotifications({ query: { queryKey: getListMemberNotificationsQueryKey() } });
+  const requests = useListMemberRequests({ query: { queryKey: getListMemberRequestsQueryKey() } });
+  const createRequest = useCreateMemberRequest();
+  const withdrawRequest = useWithdrawMemberRequest();
+  const markNotification = useMarkMemberNotificationRead();
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestNotice, setRequestNotice] = useState("");
+  const isAdmin = currentUser.data?.role === "admin";
+  const retry = () => { summary.refetch(); websites.refetch(); activity.refetch(); favorites.refetch(); notifications.refetch(); requests.refetch(); };
+  const live = (websites.data ?? []).filter((site) => site.status === "live");
+    return <Shell><div className="page-enter"><PageHeader eyebrow="bereich / übersicht" title="Deine Projekte." description="Alle verknüpften Websites, der aktuelle Status und die letzten Änderungen auf einen Blick." action={isAdmin ? <Link href="/websites" className="focus-ring inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.18)] transition-transform hover:-translate-y-0.5" data-testid="button-add-site-header"><CirclePlus className="h-4 w-4" /> Website verknüpfen</Link> : undefined} />
+      {summary.isError || websites.isError || activity.isError || favorites.isError || notifications.isError || requests.isError ? <ErrorState onRetry={retry} /> : <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{summary.isLoading ? [1,2,3,4].map((item) => <div key={item} className="skeleton h-36 rounded-2xl" />) : <><StatCard label="Websites" value={summary.data?.totalWebsites ?? websites.data?.length ?? 0} detail={`${summary.data?.liveWebsites ?? live.length} live`} icon={Globe2} accent /><StatCard label="Aufrufe insgesamt" value={formatNumber(summary.data?.totalVisits ?? 0)} detail="über alle Websites" icon={CircleGauge} /><StatCard label="Registrierte Personen" value={summary.data?.registeredUsers ?? 0} detail="in deiner Übersicht" icon={Users} /><StatCard label="Verfügbarkeit" value={summary.data?.uptime ?? "—"} detail="Durchschnitt der letzten 30 Tage" icon={ActivityIcon} />{isAdmin && <><StatCard label="Offene Anfragen" value={summary.data?.openRequests ?? 0} detail="wartet auf Bearbeitung" icon={Send} accent /><StatCard label="Neue Mitglieder" value={summary.data?.newMembers ?? 0} detail="in den letzten 30 Tagen" icon={Users} /><StatCard label="Aktive Events" value={summary.data?.activeEvents ?? 0} detail="öffentlich sichtbar" icon={CirclePlus} /><StatCard label="Feedbackprüfung" value={summary.data?.pendingFeedback ?? 0} detail="ausgeblendete Einträge" icon={MessageSquareText} /></>}</>}</div>
          <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><section className="rounded-2xl border border-border bg-card p-5 md:p-6"><div className="flex items-center justify-between"><div><div className="mono-label text-muted-foreground">aktive projekte</div><h2 className="mt-1 text-lg font-extrabold">Live-Websites</h2></div>{isAdmin && <Link href="/websites" className="text-xs font-bold text-primary hover:underline" data-testid="link-view-all-websites">Alle anzeigen <ArrowUpRight className="inline h-3 w-3" /></Link>}</div>{websites.isLoading ? <div className="mt-5"><SkeletonRows count={3} /></div> : live.length === 0 ? <div className="mt-5"><EmptyState compact title="Noch nichts live" message={isAdmin ? "Verknüpfe eine Website, damit sie hier erscheint." : "Sobald ein Projekt live ist, erscheint es hier."} action={isAdmin ? <Link href="/websites" className="text-xs font-bold text-primary" data-testid="link-add-first-site">Erste Website verknüpfen</Link> : undefined} /></div> : <div className="mt-5 grid gap-2">{live.slice(0, 5).map((site) => <a href={site.url} target="_blank" rel="noreferrer" key={site.id} className="group flex items-center gap-3 rounded-xl border border-border px-3 py-3 transition-colors hover:border-primary/40 hover:bg-accent/40" data-testid={`card-live-website-${site.id}`}><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground"><Globe2 className="h-4 w-4" /></div><div className="min-w-0 flex-1"><div className="truncate text-sm font-extrabold">{site.name}</div><div className="truncate text-xs text-muted-foreground">{site.url.replace(/^https?:\/\//, "")}</div></div><div className="text-right"><div className="text-xs font-bold">{formatNumber(site.visits)}</div><div className="text-[10px] text-muted-foreground">Aufrufe</div></div><ExternalLink className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" /></a>)}</div>}</section>
          <ActivityPanel activity={activity.data ?? []} loading={activity.isLoading} /></div>
           <div className="mt-5 grid gap-5 lg:grid-cols-3"><FavoritesPanel favorites={favorites.data ?? []} loading={favorites.isLoading} onRemove={(websiteId) => removeFavorite.mutate({ websiteId }, { onSuccess: () => favorites.refetch() })} /><NotificationsPanel notifications={notifications.data ?? []} loading={notifications.isLoading} onRead={(id) => markNotification.mutate({ notificationId: id }, { onSuccess: () => notifications.refetch() })} /><MemberRequestPanel requests={requests.data ?? []} message={requestMessage} notice={requestNotice} pending={createRequest.isPending || withdrawRequest.isPending} onMessage={setRequestMessage} onWithdraw={(id) => withdrawRequest.mutate({ requestId: id }, { onSuccess: () => requests.refetch() })} onSubmit={(event) => { event.preventDefault(); if (requestMessage.trim().length < 3) { setRequestNotice("Bitte mindestens drei Zeichen eingeben."); return; } createRequest.mutate({ data: { message: requestMessage.trim() } }, { onSuccess: () => { setRequestMessage(""); setRequestNotice("Deine Nachricht wurde an den Admin gesendet."); requests.refetch(); }, onError: () => setRequestNotice("Die Nachricht konnte nicht gesendet werden.") }); }} /></div><div className="mt-5 max-w-xl"><ProfileVisibilityPanel /></div>
