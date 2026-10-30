@@ -1,65 +1,47 @@
-# Netlify Deployment
+# Netlify Deployment (ohne Server, ohne Datenbank)
 
-Die Anwendung ist für einen Netlify-Deploy als Vite-SPA mit einer serverless Express-API vorbereitet.
+Die Seite ist eine reine statische Vite-SPA. Es gibt keine API-Funktion und keine Datenbank mehr auf Netlify.
 
-## Netlify-Projekt
+## Wo liegen die Daten?
 
-Das Repository-Root bleibt das Netlify-Base-Verzeichnis. `netlify.toml` setzt automatisch:
+- **Öffentliche Daten** (Websites, Events, Feedback): `artifacts/website-admin-dashboard/public/data/site-data.json`.
+  Diese Datei wird mit ausgeliefert und beim Laden der Seite gelesen.
+- **Änderungen im Dashboard** werden sofort im Browser (localStorage) gespeichert.
+  Mit **„Veröffentlichen“** (Websites/Events/Feedback-Seite) werden sie per GitHub-API in `site-data.json` committet.
+  Netlify baut danach automatisch neu – nach 1–2 Minuten ist alles live.
+- **Feedback, Meldungen und Anfragen** von Besuchern gehen zusätzlich an **Netlify Forms**
+  (Netlify → Site → Forms). Neues Feedback wird beim nächsten Sync automatisch in die Seite übernommen.
 
-- Build: `pnpm --filter @workspace/website-admin-dashboard run build`
-- Publish directory: `artifacts/website-admin-dashboard/dist/public`
-- Functions directory: `netlify/functions`
-- SPA-Fallback auf `index.html`
-- `/api/*` als Rewrite auf die serverless API-Funktion
+Läuft lokal noch der alte Express-Server, nutzt die App ihn automatisch; ist er nicht erreichbar, läuft alles im Browser weiter.
 
-## Benötigte Netlify-Variablen
+## Automatischer Netlify-Sync
 
-Die Werte werden im Netlify-Dashboard unter den Environment Variables hinterlegt. Keine dieser Variablen in die ZIP-Datei oder in den Frontend-Code schreiben.
+`scripts/sync-netlify.mjs` holt alle Sites aus deinem Netlify-Account und neue Feedback-Einträge aus Netlify Forms.
 
-Die Datei `.env.netlify.example` enthält die komplette Variablenliste als Vorlage. Du kannst sie lokal in `.env` umbenennen, die Werte eintragen und in Netlify über **Add a variable → Import from a .env file** importieren. Die ausgefüllte `.env`-Datei darf nicht nach GitHub hochgeladen werden.
+1. **Bei jedem Netlify-Build** (Build-Command in `netlify.toml`).
+2. **Alle 15 Minuten per GitHub Action** (`.github/workflows/sync-netlify.yml`). Gibt es eine neue Website,
+   committet die Action `site-data.json` → Netlify deployt neu → die neue Website steht auf der Seite.
 
-### Frontend
+### Einmalig einrichten
 
-- `VITE_CLERK_PUBLISHABLE_KEY`
+| Wo | Name | Wert |
+| --- | --- | --- |
+| Netlify → Site configuration → Environment variables | `NETLIFY_AUTH_TOKEN` | Netlify Personal Access Token (User settings → Applications) |
+| GitHub → Repo → Settings → Secrets and variables → Actions | `NETLIFY_AUTH_TOKEN` | derselbe Token |
+| GitHub → Repo → Settings → Secrets and variables → Actions | `NETLIFY_SITE_ID` | Site ID dieser Seite (Netlify → Site configuration → General) |
+| GitHub → Repo → Settings → Actions → General | Workflow permissions | „Read and write permissions“ |
 
-### Serverless API
+Die Action kann unter **Actions → „Netlify-Projekte synchronisieren“ → Run workflow** auch sofort gestartet werden.
 
-- `CLERK_PUBLISHABLE_KEY`
-- `CLERK_SECRET_KEY`
-- `DATABASE_URL`
-- `ADMIN_EMAIL`
-- `NETLIFY_PERSONAL_ACCESS_TOKEN` für die Funktion zum Importieren von Netlify-Websites
+### Veröffentlichen aus dem Dashboard
 
-`CLERK_SECRET_KEY`, `DATABASE_URL`, `ADMIN_EMAIL` und `NETLIFY_PERSONAL_ACCESS_TOKEN` dürfen nicht als `VITE_*`-Variable angelegt werden, weil Vite diese Werte in den Browser-Build übernehmen würde.
+Im Dashboard unter **Websites → Einstellungen** einen GitHub **Fine-grained Token** eintragen,
+der nur auf dieses Repository zugreift und die Berechtigung **Contents: Read and write** hat.
+Der Token wird nur in deinem Browser gespeichert. Optional kann dort auch der Netlify-Token
+hinterlegt werden, dann synchronisiert „Von Netlify synchronisieren“ direkt im Browser.
 
-## Clerk und Google-Anmeldung
+## Anmeldung
 
-Für Netlify muss die tatsächliche Netlify-Domain in der Clerk-Produktionsumgebung als erlaubte Anwendungs- und Redirect-Domain hinterlegt werden. Die Produktion verwendet einen getrennten Clerk-Benutzerbestand; Entwicklungskonten werden nicht automatisch übernommen.
-
-Google Sign-in muss in der Clerk-Produktionsumgebung aktiviert sein. Danach testen:
-
-1. `/sign-in` öffnen
-2. mit Google anmelden
-3. prüfen, ob `/api/session/me` mit `200` antwortet
-4. mit der in `ADMIN_EMAIL` hinterlegten Adresse die Admin-Rechte prüfen
-
-## Datenbank
-
-`DATABASE_URL` muss auf eine von Netlify erreichbare PostgreSQL-Datenbank zeigen. Vor dem ersten produktiven Aufruf das Drizzle-Schema in dieser Datenbank anwenden:
-
-```bash
-pnpm --filter @workspace/db run push
-```
-
-Der Befehl darf nur mit der vorgesehenen Produktionsdatenbank ausgeführt werden. Keine Produktions-URL in Dateien committen.
-
-## Funktionsprüfung nach dem Deploy
-
-```text
-GET /
-GET /api/healthz
-GET /api/websites
-GET /api/feedback
-```
-
-Danach zusätzlich den geschützten Pfad ohne Anmeldung prüfen: Er muss bei `/api/session/me` mit `401` antworten. Die öffentliche Website darf nur sichtbare Bewertungen anzeigen; Admin-Funktionen müssen eine echte Clerk-Sitzung verwenden.
+Ist `VITE_CLERK_PUBLISHABLE_KEY` gesetzt, wird Clerk verwendet. Ohne Schlüssel gibt es eine lokale Anmeldung
+(Name + E-Mail) direkt im Browser. Sie schaltet nur die eigene Browser-Kopie frei – öffentlich ändern kann die
+Seite nur, wer den GitHub-Token hat.

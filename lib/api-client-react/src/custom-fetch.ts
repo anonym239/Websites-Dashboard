@@ -1,3 +1,5 @@
+import { handleLocalRequest, markServerUnavailable, resolveApiMode } from "./local-backend";
+
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
 };
@@ -322,6 +324,43 @@ async function parseSuccessBody(
   }
 }
 
+function isApiPath(url: string): boolean {
+  return /^(https?:\/\/[^/]+)?\/api(\/|$)/.test(url);
+}
+
+/**
+ * Sends `/api/*` requests to the server while it is reachable and otherwise
+ * answers them in the browser (see local-backend.ts), so every page keeps
+ * working without an API server or database.
+ */
+async function fetchWithLocalFallback(
+  input: RequestInfo | URL,
+  requestInfo: { method: string; url: string },
+  init: RequestInit,
+): Promise<Response> {
+  if (!isApiPath(requestInfo.url)) return fetch(input, init);
+  const local = () => handleLocalRequest(requestInfo.method, requestInfo.url, init.body);
+
+  if ((await resolveApiMode()) === "local") return local();
+
+  let response: Response;
+  try {
+    response = await fetch(input, init);
+  } catch {
+    markServerUnavailable();
+    return local();
+  }
+
+  // A static host answers unknown API paths with the SPA's index.html, and a
+  // serverless API without its database answers with 5xx.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (response.status >= 500 || (response.ok && contentType.includes("text/html"))) {
+    markServerUnavailable();
+    return local();
+  }
+  return response;
+}
+
 export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
@@ -360,7 +399,7 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, {
+  const response = await fetchWithLocalFallback(input, requestInfo, {
     ...init,
     method,
     headers,

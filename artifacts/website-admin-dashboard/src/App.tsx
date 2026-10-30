@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
-import { ClerkProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@clerk/react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { deDE } from "@clerk/localizations";
-import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { AuthProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@/lib/auth";
 import {
   Activity as ActivityIcon,
   ArrowDown,
@@ -107,17 +106,36 @@ import {
   getListActivityQueryKey,
   getListUsersQueryKey,
   getListWebsitesQueryKey,
+  configureLocalBackend,
+  exportSnapshotJson,
+  getActiveApiMode,
+  getLocalStatus,
+  getPublishSettings,
+  publishToGitHub,
+  resetLocalData,
+  savePublishSettings,
+  subscribeLocalBackend,
+  type ApiMode,
 } from "@workspace/api-client-react";
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation, useRoute } from "wouter";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { HeroTerminal } from "@/components/hero-terminal";
 import NotFound from "@/pages/not-found";
 import "./index.css";
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const bootstrapAdminEmail = "alexanderfuchs304@gmail.com";
+
+configureLocalBackend({
+  mode: (import.meta.env.VITE_API_MODE as ApiMode | undefined) ?? "auto",
+  snapshotUrl: `${basePath}/data/site-data.json`,
+  adminEmails: [bootstrapAdminEmail],
+  defaultRepo: "anonym239/Websites-Dashboard",
+  defaultBranch: "main",
+  defaultSnapshotPath: "artifacts/website-admin-dashboard/public/data/site-data.json",
+});
 
 const clerkAppearance = {
   theme: shadcn,
@@ -185,7 +203,7 @@ function BrandMark({ compact = false }: { compact?: boolean }) {
 
 function Home() {
   const queryClient = useQueryClient();
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn } = useUser();
   const websites = useListWebsites();
   const teacherFeedback = useListFeedback();
   const feedbackStats = useGetFeedbackStats();
@@ -271,15 +289,19 @@ function Home() {
       <header className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-5 md:px-10">
         <BrandMark />
         <div className="flex items-center gap-3">
-          <span className="hidden text-xs text-muted-foreground sm:inline">{isLoaded && isSignedIn ? "Angemeldet" : "Öffentliche Ansicht · ohne Anmeldung"}</span>
           {isSignedIn ? <Link href="/dashboard" className="focus-ring inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5" data-testid="link-dashboard-public"><LayoutDashboard className="h-4 w-4" /> Zum Dashboard</Link> : <Link href="/sign-in" className="focus-ring rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-bold transition-colors hover:bg-muted" data-testid="link-sign-in">Verwaltung</Link>}
         </div>
       </header>
       <main className="mx-auto max-w-[1180px] px-5 pb-16 md:px-10">
         <section className="page-enter flex min-h-[calc(100dvh-82px)] flex-col justify-center pb-20 pt-12 md:pt-16">
-          <div className="max-w-4xl">
-            <div className="mono-label mb-5 flex items-center gap-2 text-primary"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> öffentliche projektübersicht</div>
-            <h1 className="max-w-4xl text-6xl font-extrabold leading-[.92] tracking-[-.075em] sm:text-8xl">Alex&apos; Websites<span className="text-primary">.</span></h1>
+          <div className="w-full">
+            <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <div className="mono-label mb-5 flex items-center gap-2 text-primary"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> projektübersicht</div>
+                <h1 className="max-w-4xl text-6xl font-extrabold leading-[.92] tracking-[-.075em] sm:text-8xl lg:text-7xl xl:text-8xl">Alex&apos; Websites<span className="text-primary">.</span></h1>
+              </div>
+              <HeroTerminal projectNames={projects.map((website) => website.name)} />
+            </div>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-muted-foreground">Eine Übersicht meiner Projekte, Websites und Ideen. Schau dir an, was ich programmiert habe, und öffne jedes Projekt direkt.</p>
             <div className="mt-9 flex flex-wrap gap-3">
               <a href="#projects" onClick={handleProjectsClick} className="focus-ring inline-flex items-center gap-3 rounded-xl bg-primary px-5 py-3.5 text-sm font-extrabold text-primary-foreground shadow-[0_10px_25px_hsl(var(--primary)/.2)] transition-transform hover:-translate-y-0.5" data-testid="link-view-projects">Projekte ansehen <ArrowDown className="h-4 w-4" /></a>
@@ -288,7 +310,6 @@ function Home() {
             <form onSubmit={submitFeedback} className="mt-7 max-w-3xl rounded-2xl border border-border bg-card/80 p-4 shadow-[0_18px_45px_hsl(220_32%_16%/.08)] backdrop-blur-sm md:p-5" data-testid="form-public-feedback">
               <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
                 <div><div className="mono-label text-primary">deine meinung zählt</div><h2 className="mt-1 text-lg font-extrabold tracking-[-.03em]">Wie findest du meine Projekte?</h2></div>
-                <div className="text-xs text-muted-foreground">Ohne Login · dauert 30 Sekunden</div>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-[.7fr_1.3fr]">
                 <label className="block"><span className="mb-1.5 block text-xs font-bold">Dein Name</span><input required minLength={2} maxLength={80} value={teacherName} onChange={(event) => setTeacherName(event.target.value)} className="focus-ring h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground" placeholder="z. B. Alex" data-testid="input-feedback-name" /></label>
@@ -310,10 +331,9 @@ function Home() {
                <div className="mt-3">{reportNotice && <p className="mb-2 text-xs font-semibold text-primary" role="status">{reportNotice}</p>}{teacherFeedback.isLoading ? <div className="skeleton h-20 rounded-2xl" /> : teacherFeedback.isError ? <ErrorState onRetry={() => teacherFeedback.refetch()} /> : teacherFeedback.data?.length ? <div className="feedback-marquee-viewport rounded-2xl border border-border/80 bg-card/60 py-3"><div className={`feedback-marquee-track gap-3 px-3 ${teacherFeedback.data.length > 1 ? "feedback-marquee-track-moving" : ""}`}>{teacherFeedback.data.map((item) => <article key={item.id} className="w-[260px] shrink-0 rounded-xl border border-border bg-background/80 p-3 sm:w-[310px]"><div className="flex items-center justify-between gap-3"><span className="truncate text-xs font-extrabold">{item.teacherName}</span><span className="flex shrink-0 text-primary" aria-label={`${item.rating} von 5 Sternen`}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} className="h-3 w-3" fill={star <= item.rating ? "currentColor" : "none"} />)}</span></div><p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">„{item.feedback}“</p><button type="button" onClick={() => reportFeedback(item.id)} disabled={createFeedbackReport.isPending} className="mt-2 text-[10px] font-bold text-muted-foreground hover:text-destructive disabled:opacity-50">Feedback melden</button></article>)}</div></div> : <div className="feedback-empty-state rounded-2xl border border-dashed border-border bg-card/50 px-4 py-3" aria-live="polite"><div className="feedback-empty-icon"><Star className="h-4 w-4" fill="currentColor" /></div><div><div className="feedback-empty-title text-xs font-extrabold">Seien Sie der Erste</div><div className="mt-0.5 text-[11px] text-muted-foreground">Ihre Rückmeldung erscheint hier.</div></div></div>}</div>
             </section>
           </div>
-          <div className="mt-16 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="mt-16 grid max-w-md grid-cols-2 gap-3">
             <div className="rounded-2xl border border-border bg-card p-4"><div className="mono-label text-muted-foreground">projekte</div><div className="mt-3 text-3xl font-extrabold tracking-[-.06em]">{projects.length}</div></div>
             <div className="rounded-2xl border border-border bg-card p-4"><div className="mono-label text-muted-foreground">live</div><div className="mt-3 text-3xl font-extrabold tracking-[-.06em]">{liveProjects}</div></div>
-            <div className="col-span-2 rounded-2xl border border-primary/20 bg-accent/45 p-4 sm:col-span-1"><div className="mono-label text-primary">zugang</div><div className="mt-3 text-sm font-extrabold">Für alle offen</div><div className="mt-1 text-xs text-muted-foreground">Ohne Login ansehen</div></div>
           </div>
         </section>
         <section id="projects" className="scroll-mt-6 rounded-[2rem] border border-border bg-card p-5 shadow-[0_24px_70px_hsl(220_32%_16%/.08)] md:p-7">
@@ -713,11 +733,84 @@ function WebsitesPage() {
    const remove = (site: Website) => { if (window.confirm(`Soll ${site.name} wirklich entfernt werden?`)) deleteWebsite.mutate({ websiteId: site.id }, { onSuccess: () => { invalidate(); setNotice("Website entfernt."); }, onError: () => setNotice("Die Website konnte nicht entfernt werden.") }); };
   const changeStatus = (site: Website) => { const next = site.status === "live" ? "paused" : "live"; updateWebsite.mutate({ websiteId: site.id, data: { status: next } }, { onSuccess: invalidate }); };
     return <Shell><div className="page-enter"><PageHeader eyebrow="bereich / websites" title="Websites" description="Verknüpfe hier alle Projekte, die andere sehen sollen." action={<div className="flex flex-col gap-2 sm:flex-row"><button onClick={syncNetlify} disabled={importNetlify.isPending} className="focus-ring inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-extrabold transition-colors hover:bg-muted disabled:cursor-wait disabled:opacity-60" data-testid="button-sync-netlify">{importNetlify.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudDownload className="h-4 w-4" />} {importNetlify.isPending ? "Netlify wird geladen..." : "Von Netlify synchronisieren"}</button><button onClick={() => setModal("new")} className="focus-ring inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.18)] transition-transform hover:-translate-y-0.5" data-testid="button-add-website"><CirclePlus className="h-4 w-4" /> Website verknüpfen</button></div>} />
+    <PublishPanel onReset={invalidate} />
     {notice && <div className="mb-5 flex items-center justify-between rounded-xl border border-primary/20 bg-accent px-4 py-3 text-xs font-semibold text-accent-foreground" data-testid="status-notice"><span className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> {notice}</span><button onClick={() => setNotice("")} data-testid="button-dismiss-notice"><X className="h-4 w-4" /></button></div>}
      <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="flex flex-col gap-3 border-b border-border p-4 md:flex-row md:items-center md:justify-between"><div className="relative w-full md:max-w-xs"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Websites suchen..." className="focus-ring h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground" data-testid="input-search-websites" /></div><div className="flex flex-wrap items-center gap-2">{["all", "live", "draft", "paused"].map((status) => <button key={status} onClick={() => setStatusFilter(status)} className={`rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors ${statusFilter === status ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`button-filter-${status}`}>{status === "all" ? "Alle" : status === "live" ? "Live" : status === "draft" ? "Entwurf" : "Pausiert"}</button>)}</div></div>
        {websites.isLoading ? <div className="p-4"><SkeletonRows count={5} /></div> : websites.isError ? <div className="p-4"><ErrorState onRetry={() => websites.refetch()} /></div> : filtered.length === 0 ? <div className="p-4"><EmptyState title={query || statusFilter !== "all" ? "Keine passenden Websites" : "Deine Übersicht beginnt hier"} message={query || statusFilter !== "all" ? "Versuche eine andere Suche oder einen anderen Filter." : "Verknüpfe dein erstes Projekt."} action={<button onClick={() => setModal("new")} className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-primary-foreground" data-testid="button-add-empty-website">Website verknüpfen</button>} /></div> : <div className="divide-y divide-border">{filtered.map((site) => <WebsiteRow key={site.id} site={site} onEdit={() => setModal(site)} onDelete={() => remove(site)} onStatus={() => changeStatus(site)} deleting={deleteWebsite.isPending} />)}</div>}</section>
     {modal && <WebsiteModal website={modal === "new" ? null : modal} onClose={() => setModal(null)} onSave={(data) => save(data, modal)} pending={createWebsite.isPending || updateWebsite.isPending} />}
   </div></Shell>;
+}
+
+function useApiMode() {
+  const [mode, setMode] = useState<"server" | "local" | null>(null);
+  const status = useSyncExternalStore(subscribeLocalBackend, () => JSON.stringify(getLocalStatus()));
+  useEffect(() => { getActiveApiMode().then(setMode); }, [status]);
+  return { mode, status: JSON.parse(status) as ReturnType<typeof getLocalStatus> };
+}
+
+function PublishPanel({ onReset }: { onReset: () => void }) {
+  const { mode, status } = useApiMode();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState(getPublishSettings);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error?: boolean; link?: string | null } | null>(null);
+  if (mode !== "local") return null;
+
+  const publish = async () => {
+    setPending(true);
+    setMessage(null);
+    try {
+      const result = await publishToGitHub();
+      setMessage({ text: "Veröffentlicht. Netlify baut die Seite jetzt neu – in 1–2 Minuten ist alles live.", link: result.commitUrl });
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : "Veröffentlichen fehlgeschlagen.", error: true });
+      if (!getPublishSettings().githubToken) setSettingsOpen(true);
+    } finally {
+      setPending(false);
+    }
+  };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([exportSnapshotJson()], { type: "application/json" }));
+    const link = Object.assign(document.createElement("a"), { href: url, download: "site-data.json" });
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const reset = async () => {
+    if (!window.confirm("Alle nicht veröffentlichten Änderungen in diesem Browser verwerfen?")) return;
+    await resetLocalData();
+    onReset();
+    setMessage({ text: "Lokale Änderungen verworfen. Die veröffentlichten Daten wurden neu geladen." });
+  };
+  const saveSettings = (event: FormEvent) => {
+    event.preventDefault();
+    savePublishSettings(settings);
+    setSettingsOpen(false);
+    setMessage({ text: "Einstellungen gespeichert (nur in diesem Browser)." });
+  };
+
+  return <section className="mb-5 rounded-2xl border border-border bg-card p-5" data-testid="publish-panel">
+    <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div>
+        <div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${status.dirty ? "bg-amber-500" : "bg-primary"}`} /><span className="text-sm font-extrabold">{status.dirty ? "Nicht veröffentlichte Änderungen" : "Alles veröffentlicht"}</span></div>
+        <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Ohne Server: Änderungen werden sofort in diesem Browser gespeichert. „Veröffentlichen“ schreibt sie nach GitHub, Netlify baut die Seite dann automatisch neu.{status.snapshotUpdatedAt && ` Stand online: ${new Date(status.snapshotUpdatedAt).toLocaleString("de-DE")}.`}</p>
+      </div>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        <button onClick={publish} disabled={pending} className="focus-ring inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground disabled:cursor-wait disabled:opacity-60" data-testid="button-publish">{pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Veröffentlichen</button>
+        <button onClick={() => setSettingsOpen(!settingsOpen)} className="focus-ring rounded-xl border border-border px-3 py-2.5 text-xs font-bold hover:bg-muted" data-testid="button-publish-settings">Einstellungen</button>
+        <button onClick={download} className="focus-ring rounded-xl border border-border px-3 py-2.5 text-xs font-bold hover:bg-muted" data-testid="button-download-data">JSON herunterladen</button>
+        {status.dirty && <button onClick={reset} className="focus-ring rounded-xl border border-destructive/20 px-3 py-2.5 text-xs font-bold text-destructive hover:bg-destructive/10" data-testid="button-reset-local">Verwerfen</button>}
+      </div>
+    </div>
+    {message && <p className={`mt-3 text-xs font-semibold ${message.error ? "text-destructive" : "text-primary"}`} role="status" data-testid="publish-message">{message.text}{message.link && <> <a href={message.link} target="_blank" rel="noreferrer" className="underline">Commit ansehen</a></>}</p>}
+    {settingsOpen && <form onSubmit={saveSettings} className="mt-4 grid gap-3 border-t border-border pt-4 md:grid-cols-2" data-testid="form-publish-settings">
+      <label className="block"><span className="mb-1.5 block text-xs font-bold">GitHub-Token <span className="font-normal text-muted-foreground">(Contents: Read and write)</span></span><input type="password" autoComplete="off" value={settings.githubToken} onChange={(event) => setSettings({ ...settings, githubToken: event.target.value.trim() })} className="focus-ring h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none" placeholder="github_pat_..." data-testid="input-github-token" /></label>
+      <label className="block"><span className="mb-1.5 block text-xs font-bold">Netlify-Token <span className="font-normal text-muted-foreground">(optional, für Sync direkt im Browser)</span></span><input type="password" autoComplete="off" value={settings.netlifyToken} onChange={(event) => setSettings({ ...settings, netlifyToken: event.target.value.trim() })} className="focus-ring h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none" placeholder="nfp_..." data-testid="input-netlify-token" /></label>
+      <label className="block"><span className="mb-1.5 block text-xs font-bold">Repository</span><input value={settings.githubRepo} onChange={(event) => setSettings({ ...settings, githubRepo: event.target.value.trim() })} className="focus-ring h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none" data-testid="input-github-repo" /></label>
+      <label className="block"><span className="mb-1.5 block text-xs font-bold">Branch</span><input value={settings.githubBranch} onChange={(event) => setSettings({ ...settings, githubBranch: event.target.value.trim() })} className="focus-ring h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none" data-testid="input-github-branch" /></label>
+      <p className="text-[11px] leading-5 text-muted-foreground md:col-span-2">Tokens werden nur in diesem Browser gespeichert und gehen ausschließlich an api.github.com bzw. api.netlify.com. Nutze einen Fine-grained Token, der nur auf dieses eine Repository zugreifen darf.</p>
+      <div className="flex justify-end gap-2 md:col-span-2"><button type="button" onClick={() => setSettingsOpen(false)} className="rounded-lg px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted">Abbrechen</button><button type="submit" className="rounded-lg bg-primary px-3 py-2 text-xs font-extrabold text-primary-foreground" data-testid="button-save-publish-settings">Speichern</button></div>
+    </form>}
+  </section>;
 }
 
 type EventFormData = { title: string; message: string; imageUrl?: string | null; isActive: boolean };
@@ -752,6 +845,7 @@ function EventsPage() {
 
   return <Shell><div className="page-enter">
     <PageHeader eyebrow="bereich / events" title="Events" description="Erstelle eine Nachricht, die beim ersten Besuch auf deiner öffentlichen Seite eingeblendet wird." action={<button onClick={() => setModal("new")} className="focus-ring inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground shadow-[0_8px_20px_hsl(var(--primary)/.18)] transition-transform hover:-translate-y-0.5" data-testid="button-add-event"><CirclePlus className="h-4 w-4" /> Event erstellen</button>} />
+    <PublishPanel onReset={invalidate} />
     {notice && <div className="mb-5 flex items-center justify-between rounded-xl border border-primary/20 bg-accent px-4 py-3 text-xs font-semibold text-accent-foreground" data-testid="status-event-notice"><span className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> {notice}</span><button onClick={() => setNotice("")} data-testid="button-dismiss-event-notice"><X className="h-4 w-4" /></button></div>}
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="border-b border-border p-5"><h2 className="text-sm font-extrabold">Deine Events</h2><p className="mt-1 text-xs text-muted-foreground">Nur aktive Events werden öffentlich angezeigt. Bei mehreren aktiven Events wird das zuletzt erstellte eingeblendet.</p></div>
@@ -867,7 +961,7 @@ function FeedbackPage() {
   if (currentUser.isLoading) return <Shell><div className="page-enter"><SkeletonRows count={4} /></div></Shell>;
   if (!canManageFeedback) return <Shell><div className="page-enter mx-auto max-w-xl py-16"><div className="rounded-2xl border border-border bg-card p-8 text-center"><ShieldCheck className="mx-auto h-8 w-8 text-primary" /><h1 className="mt-4 text-2xl font-extrabold">Adminrechte erforderlich</h1><p className="mt-2 text-sm text-muted-foreground">Feedback kann nur im geschützten Verwaltungsbereich verwaltet werden.</p><Link href="/dashboard" className="mt-6 inline-flex rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground" data-testid="link-back-feedback-dashboard">Zur Übersicht</Link></div></div></Shell>;
 
-  return <Shell><div className="page-enter"><PageHeader eyebrow="bereich / feedback" title="Rückmeldungen" description="Prüfe, welche Rückmeldungen öffentlich in deiner Projektübersicht erscheinen." />{notice && <div className="mb-5 flex items-center justify-between rounded-xl border border-primary/20 bg-accent px-4 py-3 text-xs font-semibold text-accent-foreground" data-testid="status-feedback-notice"><span className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> {notice}</span><button onClick={() => setNotice("")} data-testid="button-dismiss-feedback-notice"><X className="h-4 w-4" /></button></div>}<section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="flex items-center justify-between border-b border-border p-5"><div><h2 className="text-sm font-extrabold">Eingegangene Rückmeldungen</h2><p className="mt-1 text-xs text-muted-foreground">{feedback.data?.length ?? 0} Rückmeldungen insgesamt</p></div><div className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-accent-foreground"><MessageSquareText className="mr-1.5 inline h-3.5 w-3.5" /> Veröffentlichung verwalten</div></div>{feedback.isLoading ? <div className="p-4"><SkeletonRows count={4} /></div> : feedback.isError ? <div className="p-4"><ErrorState onRetry={() => feedback.refetch()} /></div> : feedback.data?.length ? <div className="divide-y divide-border">{feedback.data.map((item) => <ManagedFeedbackRow key={item.id} item={item} isAdmin={isAdmin} pending={updateFeedback.isPending || deleteFeedback.isPending} onToggle={() => toggleVisibility(item)} onDelete={() => remove(item)} />)}</div> : <div className="p-4"><EmptyState title="Noch kein Feedback" message="Neue Rückmeldungen erscheinen hier." /></div>}</section><FeedbackReportsPanel reports={reports.data ?? []} loading={reports.isLoading} pending={updateReport.isPending} onUpdate={(reportId, status) => updateReport.mutate({ reportId, data: { status } }, { onSuccess: () => reports.refetch() })} /></div></Shell>;
+  return <Shell><div className="page-enter"><PageHeader eyebrow="bereich / feedback" title="Rückmeldungen" description="Prüfe, welche Rückmeldungen öffentlich in deiner Projektübersicht erscheinen." />{isAdmin && <PublishPanel onReset={invalidate} />}{notice && <div className="mb-5 flex items-center justify-between rounded-xl border border-primary/20 bg-accent px-4 py-3 text-xs font-semibold text-accent-foreground" data-testid="status-feedback-notice"><span className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> {notice}</span><button onClick={() => setNotice("")} data-testid="button-dismiss-feedback-notice"><X className="h-4 w-4" /></button></div>}<section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="flex items-center justify-between border-b border-border p-5"><div><h2 className="text-sm font-extrabold">Eingegangene Rückmeldungen</h2><p className="mt-1 text-xs text-muted-foreground">{feedback.data?.length ?? 0} Rückmeldungen insgesamt</p></div><div className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-accent-foreground"><MessageSquareText className="mr-1.5 inline h-3.5 w-3.5" /> Veröffentlichung verwalten</div></div>{feedback.isLoading ? <div className="p-4"><SkeletonRows count={4} /></div> : feedback.isError ? <div className="p-4"><ErrorState onRetry={() => feedback.refetch()} /></div> : feedback.data?.length ? <div className="divide-y divide-border">{feedback.data.map((item) => <ManagedFeedbackRow key={item.id} item={item} isAdmin={isAdmin} pending={updateFeedback.isPending || deleteFeedback.isPending} onToggle={() => toggleVisibility(item)} onDelete={() => remove(item)} />)}</div> : <div className="p-4"><EmptyState title="Noch kein Feedback" message="Neue Rückmeldungen erscheinen hier." /></div>}</section><FeedbackReportsPanel reports={reports.data ?? []} loading={reports.isLoading} pending={updateReport.isPending} onUpdate={(reportId, status) => updateReport.mutate({ reportId, data: { status } }, { onSuccess: () => reports.refetch() })} /></div></Shell>;
 }
 
 function FeedbackHistory({ feedbackId }: { feedbackId: number }) {
@@ -951,7 +1045,7 @@ function stripBase(path: string) {
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
-  return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={clerkAppearance} localization={deDE} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} routerPush={(to) => setLocation(stripBase(to))} routerReplace={(to) => setLocation(stripBase(to), { replace: true })}><ErrorBoundary><Router /></ErrorBoundary></ClerkProvider>;
+  return <AuthProvider proxyUrl={clerkProxyUrl} appearance={clerkAppearance} localization={deDE} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} routerPush={(to) => setLocation(stripBase(to))} routerReplace={(to) => setLocation(stripBase(to), { replace: true })}><ErrorBoundary><Router /></ErrorBoundary></AuthProvider>;
 }
 
 function App() {

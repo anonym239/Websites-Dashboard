@@ -1,0 +1,43 @@
+# Keeps the project list in sync with Netlify without any server:
+# every 15 minutes it looks for new Netlify sites / feedback and, if something
+# changed, commits data/site-data.json. That push makes Netlify redeploy.
+name: Netlify-Projekte synchronisieren
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [netlify-sync]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: netlify-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Netlify-Daten abrufen
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: node scripts/sync-netlify.mjs
+      - name: Änderungen pushen
+        run: |
+          if git diff --quiet -- artifacts/website-admin-dashboard/public/data/site-data.json; then
+            echo "Keine neuen Projekte."
+            exit 0
+          fi
+          git config user.name "netlify-sync[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/website-admin-dashboard/public/data/site-data.json
+          git commit -m "Projektdaten mit Netlify synchronisiert"
+          git push

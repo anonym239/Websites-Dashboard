@@ -1,22 +1,22 @@
+# Static deploy – no serverless API and no database needed.
+# The build first pulls the current Netlify sites into data/site-data.json
+# (needs NETLIFY_AUTH_TOKEN in the site's environment variables).
 [build]
-  command = "pnpm --filter @workspace/website-admin-dashboard run build"
+  command = "node scripts/sync-netlify.mjs && pnpm --filter @workspace/website-admin-dashboard run build"
   publish = "artifacts/website-admin-dashboard/dist/public"
-  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
   NODE_ENV = "production"
   PORT = "24852"
   BASE_PATH = "/"
+  VITE_API_MODE = "local"
 
-[functions]
-  node_bundler = "esbuild"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
-  force = true
+# Project data must never be served from a stale cache.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "no-cache"
 
 [[redirects]]
   from = "/*"

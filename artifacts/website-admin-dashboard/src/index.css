@@ -562,3 +562,17 @@
   outline: 2px solid hsl(var(--primary));
   outline-offset: 3px;
 }
+
+.terminal-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: hsl(var(--primary));
+  animation: terminal-blink 1s steps(1) infinite;
+}
+
+@keyframes terminal-blink {
+  50% { opacity: 0; }
+}
