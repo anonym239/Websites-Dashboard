@@ -312,9 +312,15 @@ function mergeSnapshot(state: LocalState, snapshot: SiteSnapshot): LocalState {
   const visibleSites = snapshot.websites.filter((site) => !excluded.has(normalizeUrl(site.url)));
   if (state.dirty) {
     // Keep the admin's unpublished edits, but still pick up newly deployed sites and feedback.
-    const knownUrls = new Set(state.websites.map((site) => normalizeUrl(site.url)));
+    const published = new Map(visibleSites.map((site) => [normalizeUrl(site.url), site]));
     const knownFeedback = new Set(state.feedback.map(feedbackKey));
-    next.websites = [...state.websites, ...visibleSites.filter((site) => !knownUrls.has(normalizeUrl(site.url)))];
+    // Screenshots and repository links come from Netlify, so refresh them even on edited entries.
+    const refreshed = state.websites.map((site) => {
+      const source = published.get(normalizeUrl(site.url));
+      return source ? { ...site, imageUrl: source.imageUrl ?? site.imageUrl, githubUrl: site.githubUrl ?? source.githubUrl } : site;
+    });
+    const knownUrls = new Set(state.websites.map((site) => normalizeUrl(site.url)));
+    next.websites = [...refreshed, ...visibleSites.filter((site) => !knownUrls.has(normalizeUrl(site.url)))];
     next.feedback = [...state.feedback, ...snapshot.feedback.filter((item) => !knownFeedback.has(feedbackKey(item)))];
   } else {
     const published = new Set(snapshot.feedback.map(feedbackKey));

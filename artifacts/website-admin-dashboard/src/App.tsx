@@ -348,7 +348,7 @@ function Home() {
            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
              {websites.isLoading ? [1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="skeleton h-64 rounded-2xl" />) : visibleProjects.length > 0 ? visibleProjects.map((website) => <article key={website.id} className="group overflow-hidden rounded-2xl border border-border bg-background transition-all hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl">
                <Link href={`/projects/${website.id}`} className="block" data-testid={`link-directory-${website.id}`}>
-                 <div className="relative aspect-[1.7/1] overflow-hidden bg-gradient-to-br from-accent to-background">{website.imageUrl ? <img src={website.imageUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center text-accent-foreground"><Globe2 className="h-10 w-10 opacity-70" /></div>}<div className="absolute left-3 top-3 rounded-full border border-white/10 bg-background/80 px-2.5 py-1 text-[10px] font-extrabold backdrop-blur-md">{website.status === "live" ? "Live" : website.status === "draft" ? "Entwurf" : "Pausiert"}</div><ArrowUpRight className="absolute right-3 top-3 h-4 w-4 text-white drop-shadow-md transition-colors group-hover:text-primary" /></div>
+                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-accent to-background">{website.imageUrl ? <img src={website.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center text-accent-foreground"><Globe2 className="h-10 w-10 opacity-70" /></div>}<div className="absolute left-3 top-3 rounded-full border border-white/10 bg-background/80 px-2.5 py-1 text-[10px] font-extrabold backdrop-blur-md">{website.status === "live" ? "Live" : website.status === "draft" ? "Entwurf" : "Pausiert"}</div><ArrowUpRight className="absolute right-3 top-3 h-4 w-4 text-white drop-shadow-md transition-colors group-hover:text-primary" /></div>
                  <div className="p-4"><div className="truncate text-base font-extrabold">{website.name}</div><div className="mt-1 truncate text-xs text-muted-foreground">{website.url.replace(/^https?:\/\//, "")}</div>{website.description && <p className="mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">{website.description}</p>}</div>
                </Link>
                <div className="flex flex-wrap items-center gap-2 px-4 pb-4">
@@ -375,7 +375,7 @@ function PublicEventModal({ event, onClose }: { event: Event; onClose: () => voi
         </button>
         <div className="mono-label pr-8 text-primary">neuigkeiten</div>
         <h2 id="public-event-title" className="mt-3 pr-8 text-2xl font-extrabold tracking-[-.04em]">{event.title}</h2>
-        {event.imageUrl && <img src={event.imageUrl} alt="" className="mt-5 max-h-64 w-full rounded-xl object-cover" loading="lazy" />}
+        {event.imageUrl && <img src={event.imageUrl} alt="" className="mt-5 aspect-[16/9] w-full rounded-xl object-cover" loading="lazy" />}
         <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{event.message}</p>
         <button onClick={onClose} className="focus-ring mt-7 inline-flex rounded-xl bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground transition-transform hover:-translate-y-0.5" data-testid="button-view-public-event">
           Verstanden
@@ -442,10 +442,10 @@ function ProjectDetailPage() {
                 <ArrowDown className="h-4 w-4 rotate-90" />
                 Zur Projektübersicht
               </Link>
-              <section className="mt-5 grid gap-6 lg:grid-cols-[1.08fr_.92fr] lg:items-stretch" aria-labelledby="project-detail-title" data-testid={`project-detail-${website.id}`}>
-                <div className="relative aspect-[1.35/1] overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-accent via-card to-background shadow-[0_24px_70px_hsl(220_32%_16%/.08)]">
+              <section className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,.92fr)] lg:items-start" aria-labelledby="project-detail-title" data-testid={`project-detail-${website.id}`}>
+                <div className="relative aspect-[16/10] w-full min-w-0 overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-accent via-card to-background shadow-[0_24px_70px_hsl(220_32%_16%/.08)]">
                   {website.imageUrl ? (
-                    <img src={website.imageUrl} alt={`Vorschaubild von ${website.name}`} className="h-full w-full object-cover" />
+                    <img src={website.imageUrl} alt={`Vorschaubild von ${website.name}`} className="absolute inset-0 h-full w-full object-cover object-top" />
                   ) : (
                     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-accent-foreground">
                       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-foreground/10">
@@ -458,7 +458,7 @@ function ProjectDetailPage() {
                     {websiteStatusLabel(website.status)}
                   </div>
                 </div>
-                <div className="flex flex-col justify-center rounded-[2rem] border border-border bg-card p-6 shadow-[0_24px_70px_hsl(220_32%_16%/.08)] md:p-8">
+                <div className="flex min-w-0 flex-col justify-center rounded-[2rem] border border-border bg-card p-6 shadow-[0_24px_70px_hsl(220_32%_16%/.08)] md:p-8">
                   <div className="mono-label text-primary">projekt / {website.id.toString().padStart(2, "0")}</div>
                   <h1 id="project-detail-title" className="mt-3 text-4xl font-extrabold leading-[.95] tracking-[-.06em] sm:text-6xl">{website.name}<span className="text-primary">.</span></h1>
                   <div className="mt-5 flex items-center gap-2 text-xs font-bold text-muted-foreground">
