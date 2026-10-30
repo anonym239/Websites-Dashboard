@@ -295,10 +295,10 @@ function Home() {
       <main className="mx-auto max-w-[1180px] px-5 pb-16 md:px-10">
         <section className="page-enter flex min-h-[calc(100dvh-82px)] flex-col justify-center pb-20 pt-12 md:pt-16">
           <div className="w-full">
-            <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
+            <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
+              <div className="min-w-0 shrink-0">
                 <div className="mono-label mb-5 flex items-center gap-2 text-primary"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> projektübersicht</div>
-                <h1 className="max-w-4xl text-6xl font-extrabold leading-[.92] tracking-[-.075em] sm:text-8xl lg:text-7xl xl:text-8xl">Alex&apos; Websites<span className="text-primary">.</span></h1>
+                <h1 className="text-6xl font-extrabold leading-[.9] tracking-[-.075em] sm:text-8xl xl:text-[7.5rem]"><span className="block">Alex&apos;</span><span className="block">Websites<span className="text-primary">.</span></span></h1>
               </div>
               <HeroTerminal projectNames={projects.map((website) => website.name)} />
             </div>

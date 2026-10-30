@@ -128,14 +128,14 @@ export function HeroTerminal({ projectNames }: { projectNames: string[] }) {
   const typing = typed < scene.command.length;
 
   return (
-    <div className="hero-terminal w-full shrink-0 overflow-hidden rounded-2xl border border-border bg-[hsl(222_30%_8%)] shadow-[0_24px_60px_hsl(220_40%_4%/.45)] lg:w-[420px]" aria-hidden="true" data-testid="hero-terminal">
-      <div className="flex items-center gap-1.5 border-b border-white/5 bg-white/[.03] px-4 py-2.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-        <span className="ml-3 font-mono text-[10px] text-white/40">alex@webspace: ~</span>
+    <div className="hero-terminal w-full shrink-0 overflow-hidden rounded-2xl border border-border bg-[hsl(222_30%_8%)] shadow-[0_24px_60px_hsl(220_40%_4%/.45)] lg:min-w-0 lg:max-w-[640px] lg:flex-1" aria-hidden="true" data-testid="hero-terminal">
+      <div className="flex items-center gap-2 border-b border-white/5 bg-white/[.03] px-5 py-3">
+        <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+        <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+        <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+        <span className="ml-3 font-mono text-xs text-white/40">alex@webspace: ~</span>
       </div>
-      <div className="h-[270px] overflow-hidden px-4 py-3 font-mono text-[12px] leading-[1.45] text-[#d6dde8]">
+      <div className="h-[320px] overflow-hidden px-5 py-4 font-mono text-[13px] leading-[1.5] text-[#d6dde8] sm:h-[380px] sm:text-[15px]">
         <div className="whitespace-pre">
           <span className="text-primary">alex@webspace</span>
           <span className="text-white/40">:</span>
