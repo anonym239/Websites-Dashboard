@@ -19,14 +19,16 @@ Läuft lokal noch der alte Express-Server, nutzt die App ihn automatisch; ist er
 `scripts/sync-netlify.mjs` holt alle Sites aus deinem Netlify-Account und neue Feedback-Einträge aus Netlify Forms.
 
 1. **Bei jedem Netlify-Build** (Build-Command in `netlify.toml`).
-2. **Alle 15 Minuten per GitHub Action** (`.github/workflows/sync-netlify.yml`). Gibt es eine neue Website,
-   committet die Action `site-data.json` → Netlify deployt neu → die neue Website steht auf der Seite.
+2. **Alle 10 Minuten per geplanter Netlify-Funktion** (`netlify/functions/auto-sync.mjs`). Gibt es eine neue
+   Website oder neues Feedback, startet sie einen neuen Build → die neue Website steht auf der Seite.
+   Dafür reicht die bereits vorhandene Netlify-Variable `NETLIFY_PERSONAL_ACCESS_TOKEN`.
+3. **Optional per GitHub Action** (`.github/workflows/sync-netlify.yml`), die `site-data.json` zusätzlich ins Repo
+   zurückpusht. Sie braucht die GitHub-Secrets unten; ohne Secrets läuft sie einfach ohne Änderungen durch.
 
-### Einmalig einrichten
+### Optional: GitHub Action einrichten
 
 | Wo | Name | Wert |
 | --- | --- | --- |
-| Netlify → Site configuration → Environment variables | `NETLIFY_AUTH_TOKEN` | Netlify Personal Access Token (User settings → Applications) |
 | GitHub → Repo → Settings → Secrets and variables → Actions | `NETLIFY_AUTH_TOKEN` | derselbe Token |
 | GitHub → Repo → Settings → Secrets and variables → Actions | `NETLIFY_SITE_ID` | Site ID dieser Seite (Netlify → Site configuration → General) |
 | GitHub → Repo → Settings → Actions → General | Workflow permissions | „Read and write permissions“ |
