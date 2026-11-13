@@ -15,6 +15,8 @@ export type LocalIdentity = {
   name: string;
   email: string;
   avatarUrl?: string | null;
+  /** Read-only preview ("Überblick für Lehrer" = admin, "Gast" = member). Never stored. */
+  previewRole?: "admin" | "member";
 };
 
 type Role = "admin" | "moderator" | "member";
@@ -26,6 +28,8 @@ type WebsiteRecord = {
   url: string;
   githubUrl: string | null;
   imageUrl: string | null;
+  /** True when the preview image is renewed automatically every week. */
+  imageAuto?: boolean;
   description: string | null;
   status: WebsiteStatus;
   visits: number;
@@ -317,7 +321,15 @@ function mergeSnapshot(state: LocalState, snapshot: SiteSnapshot): LocalState {
     // Screenshots and repository links come from Netlify, so refresh them even on edited entries.
     const refreshed = state.websites.map((site) => {
       const source = published.get(normalizeUrl(site.url));
-      return source ? { ...site, imageUrl: source.imageUrl ?? site.imageUrl, githubUrl: site.githubUrl ?? source.githubUrl } : site;
+      if (!source) return site;
+      // Weekly renewed images follow the published data; a hand-picked unpublished image stays.
+      const keepOwnImage = site.imageAuto === false && site.imageUrl !== source.imageUrl;
+      return {
+        ...site,
+        imageUrl: keepOwnImage ? site.imageUrl : source.imageUrl ?? site.imageUrl,
+        imageAuto: keepOwnImage ? false : source.imageAuto ?? site.imageAuto,
+        githubUrl: site.githubUrl ?? source.githubUrl,
+      };
     });
     const knownUrls = new Set(state.websites.map((site) => normalizeUrl(site.url)));
     next.websites = [...refreshed, ...visibleSites.filter((site) => !knownUrls.has(normalizeUrl(site.url)))];
@@ -420,9 +432,23 @@ function isHttpUrl(value: unknown): value is string {
   }
 }
 
+function previewUser(identity: LocalIdentity): UserRecord {
+  return {
+    id: identity.id,
+    name: identity.name,
+    email: identity.email,
+    avatarUrl: null,
+    role: identity.previewRole ?? "member",
+    joinedAt: now(),
+    lastActiveAt: now(),
+    profileVisibility: "private",
+  };
+}
+
 function currentUser(state: LocalState): UserRecord | null {
   const identity = identityGetter();
   if (!identity) return null;
+  if (identity.previewRole) return previewUser(identity);
   const email = normalizeEmail(identity.email);
   return state.users.find((user) => user.id === identity.id) ?? state.users.find((user) => normalizeEmail(user.email) === email) ?? null;
 }
@@ -430,6 +456,7 @@ function currentUser(state: LocalState): UserRecord | null {
 function requireUser(): UserRecord {
   const identity = identityGetter();
   if (!identity) throw new HttpError(401, "Bitte melde dich an.");
+  if (identity.previewRole) return previewUser(identity);
   let user: UserRecord | null = null;
   update((state) => {
     const existing = currentUser(state);
@@ -603,6 +630,10 @@ async function route(method: string, path: string, body: Body): Promise<unknown>
   const pattern = segments.map((part, index) => (/^\d+$/.test(part) || (segments[0] === "users" && index === 1) ? ":id" : part));
   const key = `${method} /${pattern.join("/")}`;
   const id = Number(segments.find((part) => /^\d+$/.test(part)));
+  if (method !== "GET" && identityGetter()?.previewRole) {
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("webspace:preview-blocked"));
+    throw new HttpError(403, "Vorschau-Modus: Hier kannst du dich nur umsehen. Melde dich an, um etwas zu ändern.");
+  }
 
   switch (key) {
     case "GET /healthz":
@@ -638,9 +669,12 @@ async function route(method: string, path: string, body: Body): Promise<unknown>
       update((s) => {
         result = s.websites.find((site) => site.id === id);
         if (!result) return;
+        const previousImage = result.imageUrl;
         for (const field of ["name", "url", "githubUrl", "imageUrl", "description", "status"] as const) {
           if (field in body) (result as Record<string, unknown>)[field] = body[field] === "" ? null : body[field];
         }
+        // A hand-picked image is kept; an emptied one is renewed weekly again (scripts/sync-netlify.mjs).
+        if (result.imageUrl !== previousImage) result.imageAuto = !result.imageUrl;
         result.updatedAt = now();
         logActivity(s, "website_updated", `${result.name} wurde aktualisiert`, user.name);
       }, true);

@@ -576,3 +576,44 @@
 @keyframes terminal-blink {
   50% { opacity: 0; }
 }
+
+.terminal-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  animation: terminal-pulse 2s ease-out infinite;
+}
+
+@keyframes terminal-pulse {
+  0% { box-shadow: 0 0 0 0 hsl(var(--primary) / .6); }
+  70%, 100% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-live-dot { animation: none; }
+}
+
+/* Read-only preview ("Überblick für Lehrer" / "Gast"): hide every control that changes data. */
+[data-preview] :is(
+  [data-testid^="button-add-"],
+  [data-testid^="button-delete-"],
+  [data-testid^="button-edit-"],
+  [data-testid^="button-menu-website-"],
+  [data-testid^="button-toggle-event-"],
+  [data-testid^="button-toggle-feedback-"],
+  [data-testid^="button-profile-visibility-"],
+  [data-testid="button-publish"],
+  [data-testid="button-publish-settings"],
+  [data-testid="button-reset-local"],
+  [data-testid="button-sync-netlify"],
+  [data-testid="button-send-member-request"],
+  [data-testid="button-save-profile"]
+) {
+  display: none !important;
+}
+
+[data-preview] :is([data-testid^="button-status-"], [data-testid^="select-role-"], [data-testid^="button-favorite-project-"]) {
+  pointer-events: none;
+}

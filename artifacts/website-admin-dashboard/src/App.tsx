@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { deDE } from "@clerk/localizations";
 import { shadcn } from "@clerk/themes";
-import { AuthProvider, SignIn, SignUp, UserProfile, useClerk, useUser } from "@/lib/auth";
+import { AuthProvider, SignIn, SignUp, UserProfile, endPreview, useClerk, usePreviewRole, useUser } from "@/lib/auth";
 import {
   Activity as ActivityIcon,
   ArrowDown,
@@ -218,6 +218,12 @@ function Home() {
   const [feedbackNotice, setFeedbackNotice] = useState("");
   const [reportNotice, setReportNotice] = useState("");
   const [eventOpen, setEventOpen] = useState(true);
+  const publicEvent = activeEvents.data?.[0];
+  const eventSeen = publicEvent ? hasSeenEvent(publicEvent) : true;
+  useEffect(() => {
+    // Shown once per visitor: remember it as soon as it appears.
+    if (publicEvent && eventOpen && !eventSeen) markEventSeen(publicEvent);
+  }, [publicEvent, eventOpen, eventSeen]);
   const projects = websites.data ?? [];
   const visibleProjects = projects.filter((website) => {
     const matchesQuery = `${website.name} ${website.url} ${website.description ?? ""}`.toLowerCase().includes(query.toLowerCase());
@@ -361,9 +367,38 @@ function Home() {
         </section>
       </main>
        <footer className="mx-auto flex max-w-[1180px] items-center justify-between px-5 py-8 text-xs text-muted-foreground md:px-10"><span className="mono-label text-[9px]">ALEX&apos; WEBSITES / PROJEKTÜBERSICHT</span><span>Gebaut mit Neugier.</span></footer>
-       {activeEvents.data?.[0] && eventOpen && <PublicEventModal event={activeEvents.data[0]} onClose={() => setEventOpen(false)} />}
+       {publicEvent && eventOpen && !eventSeenOnLoad(publicEvent) && <PublicEventModal event={publicEvent} onClose={() => setEventOpen(false)} />}
     </div>
   );
+}
+
+const SEEN_EVENTS_KEY = "webspace.seen-events.v1";
+const eventKey = (event: Event) => `${event.id}:${event.updatedAt}`;
+/** Events already seen before this page load – so the popup does not vanish while it is open. */
+const seenAtLoad = new Set<string>(readSeenEvents());
+
+function readSeenEvents(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_EVENTS_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+
+function hasSeenEvent(event: Event) {
+  return readSeenEvents().includes(eventKey(event));
+}
+
+function eventSeenOnLoad(event: Event) {
+  return seenAtLoad.has(eventKey(event));
+}
+
+function markEventSeen(event: Event) {
+  try {
+    localStorage.setItem(SEEN_EVENTS_KEY, JSON.stringify([...readSeenEvents(), eventKey(event)].slice(-50)));
+  } catch {
+    // Blocked storage: the popup may show again next time.
+  }
 }
 
 function PublicEventModal({ event, onClose }: { event: Event; onClose: () => void }) {
@@ -603,12 +638,21 @@ function Shell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useUser();
+  const previewRole = usePreviewRole();
+  const [previewBlocked, setPreviewBlocked] = useState(false);
+  useEffect(() => {
+    if (!previewRole) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const onBlocked = () => { setPreviewBlocked(true); clearTimeout(timer); timer = setTimeout(() => setPreviewBlocked(false), 4000); };
+    window.addEventListener("webspace:preview-blocked", onBlocked);
+    return () => { window.removeEventListener("webspace:preview-blocked", onBlocked); clearTimeout(timer); };
+  }, [previewRole]);
   const currentUser = useGetCurrentUser();
   const { signOut } = useClerk();
    const isAdmin = currentUser.data?.role === "admin";
    const canManageFeedback = isAdmin || currentUser.data?.role === "moderator";
       const nav = [{ href: "/dashboard", label: "Übersicht", icon: LayoutDashboard }, { href: "/profile", label: "Mein Profil", icon: UserRound }, ...(isAdmin ? [{ href: "/websites", label: "Websites", icon: Globe2 }] : []), ...(canManageFeedback ? [{ href: "/feedback", label: "Feedback", icon: MessageSquareText }] : []), ...(isAdmin ? [{ href: "/events", label: "Events", icon: CirclePlus }] : []), ...(isAdmin ? [{ href: "/users", label: "Personen", icon: Users }] : []), ...(isAdmin ? [{ href: "/requests", label: "Anfragen", icon: Send }] : []), ...(isAdmin ? [{ href: "/activity", label: "Protokoll", icon: ActivityIcon }] : [])];
-  return <div className="min-h-[100dvh] bg-background text-foreground">
+  return <div className="min-h-[100dvh] bg-background text-foreground" data-preview={previewRole ?? undefined}>
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col bg-sidebar px-4 py-5 text-sidebar-foreground transition-transform duration-300 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="flex items-center justify-between px-2"><BrandMark /><button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden" data-testid="button-close-menu"><X className="h-4 w-4" /></button></div>
        <div className="mt-12 px-2 mono-label text-[9px] text-sidebar-foreground/45">arbeitsbereich</div>
@@ -619,6 +663,7 @@ function Shell({ children }: { children: ReactNode }) {
     {mobileOpen && <button className="fixed inset-0 z-30 bg-foreground/30 md:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation" data-testid="button-overlay" />}
     <div className="md:pl-[248px]">
        <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur-md md:px-10"><div className="flex items-center gap-3"><button className="rounded-lg p-2 hover:bg-muted md:hidden" onClick={() => setMobileOpen(true)} data-testid="button-open-menu"><Menu className="h-5 w-5" /></button><div className="mono-label hidden text-muted-foreground sm:block">{location === "/dashboard" ? "bereich / übersicht" : `bereich / ${location.replace("/", "")}`}</div></div><div className="flex items-center gap-3"><div className="hidden items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground sm:flex"><Search className="h-3.5 w-3.5" /><span>Suchen</span><kbd className="ml-5 rounded border border-border px-1.5 py-0.5 font-mono text-[9px]">K</kbd></div><div className="h-7 w-px bg-border" /><div className="text-right"><div className="text-xs font-extrabold">{user?.firstName ?? "Dein"} <span className="hidden sm:inline">{user?.lastName ?? "Bereich"}</span></div><div className="mono-label text-[9px] text-primary">{currentUser.isLoading ? "Wird geladen" : currentUser.isError ? "Rolle nicht geladen" : isAdmin ? "Admin" : currentUser.data?.role === "moderator" ? "Moderator" : "Mitglied"}</div></div></div></header>
+      {previewRole && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-primary/20 bg-accent px-5 py-2.5 text-xs text-accent-foreground md:px-10" data-testid="banner-preview"><span className="font-extrabold">{previewRole === "admin" ? "Überblick für Lehrer" : "Gast-Ansicht"}</span><span className={previewBlocked ? "font-bold text-destructive" : "text-accent-foreground/75"} role="status">{previewBlocked ? "Das geht in der Vorschau nicht – hier kann nichts geändert oder gelöscht werden." : `Vorschau ${previewRole === "admin" ? "mit Admin-Rechten" : "als Mitglied"} – nur zum Ansehen, Änderungen sind ausgeschaltet.`}</span><span className="ml-auto flex gap-2"><button onClick={() => { endPreview(); setLocation("/sign-up"); }} className="focus-ring rounded-lg bg-primary px-3 py-1.5 font-bold text-primary-foreground" data-testid="button-preview-register">Konto anlegen</button><button onClick={() => { endPreview(); setLocation("/"); }} className="focus-ring rounded-lg border border-primary/30 px-3 py-1.5 font-bold" data-testid="button-preview-end">Vorschau beenden</button></span></div>}
       <main className="mx-auto max-w-[1440px] p-5 md:p-10">{children}</main>
     </div>
   </div>;

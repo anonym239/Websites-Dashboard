@@ -1,204 +1,231 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-30T19:24:05.185Z",
+  "updatedAt": "2026-11-13T20:09:45.627Z",
   "websites": [
     {
       "id": 1,
       "name": "Anzeigen4you",
       "url": "https://anzeigen4you.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://anzeigen4you.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 2,
       "name": "Horror Pines",
       "url": "https://horror-pines.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://horror-pines.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 3,
       "name": "Handarcade",
       "url": "https://handarcade.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://handarcade.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 4,
       "name": "Whishlists",
       "url": "https://whishlists.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://whishlists.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 5,
       "name": "Lernora",
       "url": "https://lernora.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://lernora.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 6,
       "name": "Todo List43",
       "url": "https://todo-list43.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://todo-list43.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 7,
       "name": "Abnehm Guide",
       "url": "https://abnehm-guide.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://abnehm-guide.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 8,
       "name": "Juwelier Boten",
       "url": "https://juwelier-boten.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://juwelier-boten.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 9,
       "name": "Closet43",
       "url": "https://closet43.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://closet43.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 10,
       "name": "Homemenu",
       "url": "https://homemenu.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://homemenu.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 11,
       "name": "Study Master43",
       "url": "https://study-master43.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://study-master43.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 12,
       "name": "Valentinstag2026",
       "url": "https://valentinstag2026.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://valentinstag2026.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 13,
       "name": "Mini Youtube2",
       "url": "https://mini-youtube2.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://mini-youtube2.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 14,
       "name": "Slabfont",
       "url": "https://slabfont.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://slabfont.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 15,
       "name": "Rocketgame2",
       "url": "https://rocketgame2.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://rocketgame2.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     },
     {
       "id": 16,
       "name": "Reaktiongame",
       "url": "https://reaktiongame.netlify.app",
       "githubUrl": null,
-      "imageUrl": null,
+      "imageUrl": "https://image.thum.io/get/width/1200/crop/750/noanimate/https://reaktiongame.netlify.app/?v=2026-W46",
       "description": null,
       "status": "live",
       "visits": 0,
       "updatedAt": "2026-10-30T19:24:05.185Z",
-      "ownerName": "Netlify"
+      "ownerName": "Netlify",
+      "imageAuto": true
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": 1,
+      "title": "Weihnachts-Special 🎄",
+      "message": "Bald ist Weihnachten! Bis zum 24. Dezember gibt es hier jede Woche ein kleines Update – neue Projekte, frische Vorschaubilder und vielleicht die eine oder andere Überraschung. Frohe Feiertage!",
+      "imageUrl": "/events/weihnachten.svg",
+      "isActive": true,
+      "createdAt": "2026-11-13T12:00:00.000Z",
+      "updatedAt": "2026-11-13T12:00:00.000Z"
+    }
+  ],
   "feedback": [],
   "excludedUrls": [
     "https://alex-websites.netlify.app"
   ],
-  "excludedFeedbackSubmissions": []
+  "excludedFeedbackSubmissions": [],
+  "imageVersion": "2026-W46"
 }

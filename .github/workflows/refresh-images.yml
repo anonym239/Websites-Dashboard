@@ -1,0 +1,43 @@
+# Renews every preview image once a week. A reworked website then also gets a
+# current picture on the dashboard: the image URLs get a new ?v= stamp, the
+# commit makes Netlify redeploy, and browsers load the fresh screenshot.
+# Can also be started by hand ("Run workflow") right after a site was redesigned.
+name: Vorschaubilder wöchentlich erneuern
+
+on:
+  schedule:
+    - cron: "0 4 * * 1" # jeden Montag 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: netlify-sync
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Bilder von Netlify neu holen
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          REFRESH_IMAGES: "1"
+        run: node scripts/sync-netlify.mjs
+      - name: Änderungen pushen
+        run: |
+          if git diff --quiet -- artifacts/website-admin-dashboard/public/data/site-data.json; then
+            echo "Keine Änderungen."
+            exit 0
+          fi
+          git config user.name "netlify-sync[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/website-admin-dashboard/public/data/site-data.json
+          git commit -m "Vorschaubilder wöchentlich erneuert"
+          git push
