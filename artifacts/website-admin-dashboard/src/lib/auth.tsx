@@ -121,6 +121,10 @@ function subscribeLocalUser(listener: () => void) {
 type ClerkWindow = { Clerk?: { user?: { id: string; fullName?: string | null; imageUrl?: string; primaryEmailAddress?: { emailAddress: string } | null } | null } };
 
 setLocalIdentityGetter(() => {
+  const preview = readLocalUser();
+  if (preview?.preview) {
+    return { id: preview.id, name: `${preview.firstName} ${preview.lastName}`.trim(), email: preview.email, previewRole: preview.preview };
+  }
   if (hasClerk) {
     const user = (window as unknown as ClerkWindow).Clerk?.user;
     const email = user?.primaryEmailAddress?.emailAddress;
@@ -155,17 +159,45 @@ function useLocalClerk() {
   };
 }
 
-export const useUser = (hasClerk ? useRealUser : useLocalUser) as () => {
+type UserState = {
   isLoaded: boolean;
   isSignedIn: boolean | undefined;
   user: ReturnType<typeof toUserShape> | null | undefined;
 };
-export const useClerk = (hasClerk ? useRealClerk : useLocalClerk) as () => ReturnType<typeof useLocalClerk>;
+
+/** With Clerk, a read-only preview session ("Lehrer" / "Gast") still takes precedence. */
+function useClerkOrPreviewUser(): UserState {
+  const real = useRealUser() as unknown as UserState;
+  const local = useSyncExternalStore(subscribeLocalUser, readLocalUser);
+  return local?.preview ? { isLoaded: true, isSignedIn: true, user: toUserShape(local) } : real;
+}
+
+function useClerkWithPreview() {
+  const clerk = useRealClerk();
+  return {
+    signOut: async (options: { redirectUrl?: string } = {}) => {
+      if (readLocalUser()?.preview) {
+        writeLocalUser(null);
+        if (options.redirectUrl) window.location.assign(options.redirectUrl);
+        return;
+      }
+      await clerk.signOut(options);
+    },
+  };
+}
+
+function useLocalSignOut() {
+  const { signOut } = useLocalClerk();
+  return { signOut };
+}
+
+export const useUser = (hasClerk ? useClerkOrPreviewUser : useLocalUser) as () => UserState;
+export const useClerk = (hasClerk ? useClerkWithPreview : useLocalSignOut) as () => { signOut: (options?: { redirectUrl?: string }) => Promise<void> };
 
 /** Read-only preview role ("admin" = Überblick für Lehrer, "member" = Gast), or null. */
 export function usePreviewRole(): PreviewRole | null {
   const user = useSyncExternalStore(subscribeLocalUser, readLocalUser);
-  return hasClerk ? null : user?.preview ?? null;
+  return user?.preview ?? null;
 }
 
 export function endPreview() {
@@ -210,11 +242,6 @@ function LocalAuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     }
   };
 
-  const preview = (role: PreviewRole) => {
-    writeLocalUser(PREVIEW_USERS[role]);
-    setLocation("/dashboard");
-  };
-
   return (
     <div className="w-[440px] max-w-full rounded-2xl border border-border bg-card p-8 shadow-xl" data-testid="local-auth">
       <div className="mono-label text-primary">{signUp ? "konto anlegen" : "anmelden"}</div>
@@ -231,18 +258,39 @@ function LocalAuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         {error && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive" data-testid="status-auth-error">{error}</div>}
         <button type="submit" disabled={busy} className="focus-ring w-full rounded-lg bg-primary px-4 py-3 text-sm font-extrabold text-primary-foreground disabled:opacity-60" data-testid="button-local-sign-in">{busy ? "Einen Moment ..." : signUp ? "Konto anlegen" : "Anmelden"}</button>
       </form>
-      <div className="mt-6">
-        <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground"><span className="h-px flex-1 bg-border" />oder erst mal umsehen<span className="h-px flex-1 bg-border" /></div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <button type="button" onClick={() => preview("admin")} className="focus-ring rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50 hover:bg-muted" data-testid="button-preview-teacher"><span className="block text-xs font-extrabold">Überblick für Lehrer</span><span className="block text-[10px] text-muted-foreground">Ansicht als Admin</span></button>
-          <button type="button" onClick={() => preview("member")} className="focus-ring rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50 hover:bg-muted" data-testid="button-preview-guest"><span className="block text-xs font-extrabold">Als Gast</span><span className="block text-[10px] text-muted-foreground">Ansicht als Mitglied</span></button>
-        </div>
-        <p className="mt-2 text-center text-[10px] text-muted-foreground">Die Vorschau ist nur zum Ansehen – ändern geht erst mit Konto.</p>
-      </div>
+      <PreviewButtons className="mt-6" />
       <div className="mt-5 border-t border-border pt-4 text-center text-xs text-muted-foreground">
         {signUp ? <>Schon registriert? <Link href="/sign-in" className="font-bold text-primary">Anmelden</Link></> : <>Noch kein Konto? <Link href="/sign-up" className="font-bold text-primary">Registrieren</Link></>}
         <span className="mx-2">·</span><Link href="/" className="font-bold text-primary">Zur Startseite</Link>
       </div>
+    </div>
+  );
+}
+
+/** "Überblick für Lehrer" (admin view) and "Als Gast" (member view) – read-only previews. */
+function PreviewButtons({ className = "" }: { className?: string }) {
+  const [, setLocation] = useLocation();
+  const preview = (role: PreviewRole) => {
+    writeLocalUser(PREVIEW_USERS[role]);
+    setLocation("/dashboard");
+  };
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground"><span className="h-px flex-1 bg-border" />oder erst mal umsehen<span className="h-px flex-1 bg-border" /></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <button type="button" onClick={() => preview("admin")} className="focus-ring rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50 hover:bg-muted" data-testid="button-preview-teacher"><span className="block text-xs font-extrabold">Überblick für Lehrer</span><span className="block text-[10px] text-muted-foreground">Ansicht als Admin</span></button>
+        <button type="button" onClick={() => preview("member")} className="focus-ring rounded-lg border border-border bg-background px-3 py-2.5 text-left transition-colors hover:border-primary/50 hover:bg-muted" data-testid="button-preview-guest"><span className="block text-xs font-extrabold">Als Gast</span><span className="block text-[10px] text-muted-foreground">Ansicht als Mitglied</span></button>
+      </div>
+      <p className="mt-2 text-center text-[10px] text-muted-foreground">Die Vorschau ist nur zum Ansehen – ändern geht erst mit Konto.</p>
+    </div>
+  );
+}
+
+function ClerkWithPreview({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex w-[440px] max-w-full flex-col items-center">
+      {children}
+      <PreviewButtons className="mt-6 w-full rounded-2xl border border-border bg-card p-5" />
     </div>
   );
 }
@@ -274,13 +322,14 @@ function LocalUserProfile() {
 }
 
 export function SignIn(props: ComponentProps<typeof RealSignIn>) {
-  return hasClerk ? <RealSignIn {...props} /> : <LocalAuthForm mode="sign-in" />;
+  return hasClerk ? <ClerkWithPreview><RealSignIn {...props} /></ClerkWithPreview> : <LocalAuthForm mode="sign-in" />;
 }
 
 export function SignUp(props: ComponentProps<typeof RealSignUp>) {
-  return hasClerk ? <RealSignUp {...props} /> : <LocalAuthForm mode="sign-up" />;
+  return hasClerk ? <ClerkWithPreview><RealSignUp {...props} /></ClerkWithPreview> : <LocalAuthForm mode="sign-up" />;
 }
 
 export function UserProfile(props: ComponentProps<typeof RealUserProfile>) {
-  return hasClerk ? <RealUserProfile {...props} /> : <LocalUserProfile />;
+  const preview = usePreviewRole();
+  return hasClerk && !preview ? <RealUserProfile {...props} /> : <LocalUserProfile />;
 }

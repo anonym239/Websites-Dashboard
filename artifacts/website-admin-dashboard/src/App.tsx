@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { deDE } from "@clerk/localizations";
 import { shadcn } from "@clerk/themes";
 import { AuthProvider, SignIn, SignUp, UserProfile, endPreview, useClerk, usePreviewRole, useUser } from "@/lib/auth";
@@ -1057,10 +1057,21 @@ function AuthPages() {
   return <><Route path="/sign-in/*?" component={() => <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-10"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>} /><Route path="/sign-up/*?" component={() => <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-10"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>} /></>;
 }
 
+/**
+ * Drops cached data only when a *different* person signs in or out. Clerk also
+ * reports once when it has finished loading; clearing the cache then made the
+ * page load all its data a second time.
+ */
 function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
+  const { isLoaded, user } = useUser();
   const qc = useQueryClient();
-  useEffect(() => addListener(() => { qc.clear(); }), [addListener, qc]);
+  const previousUserId = useRef<string | null | undefined>(undefined);
+  const userId = isLoaded ? user?.id ?? null : undefined;
+  useEffect(() => {
+    if (userId === undefined) return;
+    if (previousUserId.current !== undefined && previousUserId.current !== userId) qc.clear();
+    previousUserId.current = userId;
+  }, [userId, qc]);
   return null;
 }
 
